@@ -3,7 +3,7 @@ import {
   calculateSupertrend,
   calculateADXSeries,
   calculateRSISeries
-} from '../data/tradingLogic';
+} from '../data/tradingLogic.js';
 
 // Helper to parse candles from Yahoo Finance
 export function parseYahooCandles(result) {
@@ -116,8 +116,8 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
       // - ADX >= 18 (avoid chop traps)
       // - RSI in healthy selling zone (RSI <= 55)
       const isBearishBreak = c.close < vwap && c.close < ema9 && c.close < c.open && isStrongBody &&
-        (c.close < cprBottom || prevC.close >= vwap) && adx >= 18 && rsi <= 55;
-      
+        (c.close < cprBottom || prevC.close >= vwap);
+
       // 2. Bullish Breakout (CALL):
       // - Price breaks above VWAP + above 9 EMA
       // - Strong green body
@@ -125,7 +125,7 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
       // - ADX >= 18 (avoid chop traps)
       // - RSI in healthy momentum zone (RSI >= 45)
       const isBullishBreak = c.close > vwap && c.close > ema9 && c.close > c.open && isStrongBody &&
-        (c.close > cprTop || prevC.close <= vwap) && adx >= 18 && rsi >= 45;
+        (c.close > cprTop || prevC.close <= vwap);
 
       if (isBearishBreak) {
         const atmStrike = Math.round(c.close / 50) * 50;
@@ -343,7 +343,7 @@ export function run30DayBacktest(daySessions) {
   const winningTrades = tradeLog.filter(t => t.pnl > 0).length;
   const losingTrades = tradeLog.filter(t => t.pnl < 0).length;
   const winRate = totalTrades > 0 ? Number(((winningTrades / totalTrades) * 100).toFixed(1)) : 0;
-  
+
   const totalProfit = tradeLog.reduce((acc, t) => acc + (t.pnl > 0 ? t.pnl : 0), 0);
   const totalLoss = Math.abs(tradeLog.reduce((acc, t) => acc + (t.pnl < 0 ? t.pnl : 0), 0));
   const netPnl = Number((totalProfit - totalLoss).toFixed(2));
