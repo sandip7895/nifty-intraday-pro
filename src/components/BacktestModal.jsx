@@ -25,7 +25,7 @@ export default function BacktestModal({
   const [backtestResult, setBacktestResult] = useState(null);
   const [sessionsData, setSessionsData] = useState([]);
   const [allSessionsData, setAllSessionsData] = useState([]);
-  const [datePreset, setDatePreset] = useState('30d'); // '7d', '15d', '30d', '60d', 'custom'
+  const [datePreset, setDatePreset] = useState('60d'); // '60d' is now DEFAULT
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
@@ -73,12 +73,12 @@ export default function BacktestModal({
       }
 
       setAllSessionsData(daySessions);
-      const defaultStart = daySessions[Math.max(0, daySessions.length - 30)]?.date || daySessions[0].date;
+      const defaultStart = daySessions[0]?.date;
       const defaultEnd = daySessions[daySessions.length - 1]?.date;
       setStartDate(defaultStart);
       setEndDate(defaultEnd);
 
-      applyFilter(datePreset, defaultStart, defaultEnd, daySessions);
+      applyFilter('60d', defaultStart, defaultEnd, daySessions);
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to fetch historical data from real market feed.');
@@ -90,10 +90,10 @@ export default function BacktestModal({
   if (!isOpen) return null;
 
   const getTitle = () => {
-    if (datePreset === '7d') return '7-Day';
-    if (datePreset === '15d') return '15-Day';
-    if (datePreset === '30d') return '30-Day';
     if (datePreset === '60d') return '60-Day (3 Months)';
+    if (datePreset === '30d') return '30-Day';
+    if (datePreset === '15d') return '15-Day';
+    if (datePreset === '7d') return '7-Day';
     return 'Custom Date';
   };
 
@@ -152,10 +152,10 @@ export default function BacktestModal({
                   Range:
                 </span>
                 {[
-                  { id: '7d', label: '7D' },
-                  { id: '15d', label: '15D' },
+                  { id: '60d', label: '60D (Default)' },
                   { id: '30d', label: '30D' },
-                  { id: '60d', label: 'Max (60D)' }
+                  { id: '15d', label: '15D' },
+                  { id: '7d', label: '7D' }
                 ].map((p) => (
                   <button
                     key={p.id}
