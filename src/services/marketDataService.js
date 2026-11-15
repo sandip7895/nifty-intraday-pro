@@ -290,11 +290,11 @@ export async function fetchNiftyLatestSession() {
   };
 }
 
-// Fetch Full Real 30-Day 5-Minute Candles
-export async function fetchNifty30DayCandles() {
-  const response = await fetch('/yahoo-api/v8/finance/chart/%5ENSEI?interval=5m&range=30d');
+// Fetch Full Real Historical 5-Minute Candles (Up to 60 Days Max Available from Free Exchange Feed)
+export async function fetchNiftyHistoricalCandles(range = '60d') {
+  const response = await fetch(`/yahoo-api/v8/finance/chart/%5ENSEI?interval=5m&range=${range}`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch 30-day data: ${response.statusText}`);
+    throw new Error(`Failed to fetch historical data: ${response.statusText}`);
   }
 
   const json = await response.json();
@@ -317,8 +317,8 @@ export async function fetchNifty30DayCandles() {
   }));
 }
 
-// Backward-compatibility alias
-export const fetchNifty60DayCandles = fetchNifty30DayCandles;
+export const fetchNifty30DayCandles = fetchNiftyHistoricalCandles;
+export const fetchNifty60DayCandles = fetchNiftyHistoricalCandles;
 
 // 30-Day Backtest using the EXACT same evaluateSessionTrade function
 export function run30DayBacktest(daySessions) {

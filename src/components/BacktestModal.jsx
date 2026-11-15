@@ -24,12 +24,43 @@ export default function BacktestModal({
   const [error, setError] = useState(null);
   const [backtestResult, setBacktestResult] = useState(null);
   const [sessionsData, setSessionsData] = useState([]);
+  const [allSessionsData, setAllSessionsData] = useState([]);
+  const [datePreset, setDatePreset] = useState('30d'); // '7d', '15d', '30d', '60d', 'custom'
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       loadRealBacktestData();
     }
   }, [isOpen]);
+
+  const applyFilter = (preset, customStart, customEnd, sessionsList) => {
+    const list = sessionsList || allSessionsData;
+    if (!list || list.length === 0) return;
+
+    let filteredSessions = [];
+    if (preset === '7d') {
+      filteredSessions = list.slice(Math.max(0, list.length - 8));
+    } else if (preset === '15d') {
+      filteredSessions = list.slice(Math.max(0, list.length - 16));
+    } else if (preset === '30d') {
+      filteredSessions = list.slice(Math.max(0, list.length - 30));
+    } else if (preset === '60d') {
+      filteredSessions = list;
+    } else if (preset === 'custom') {
+      const s = customStart || startDate;
+      const e = customEnd || endDate;
+      filteredSessions = list.filter(item => item.date >= s && item.date <= e);
+    }
+
+    if (filteredSessions.length > 0) {
+      setSessionsData(filteredSessions);
+      const results = run30DayBacktest(filteredSessions);
+      setBacktestResult(results);
+    }
+  };
 
   const loadRealBacktestData = async () => {
     setIsLoading(true);
@@ -41,9 +72,13 @@ export default function BacktestModal({
         throw new Error('No historical candles returned from market feed');
       }
 
-      setSessionsData(daySessions);
-      const results = run30DayBacktest(daySessions);
-      setBacktestResult(results);
+      setAllSessionsData(daySessions);
+      const defaultStart = daySessions[Math.max(0, daySessions.length - 30)]?.date || daySessions[0].date;
+      const defaultEnd = daySessions[daySessions.length - 1]?.date;
+      setStartDate(defaultStart);
+      setEndDate(defaultEnd);
+
+      applyFilter(datePreset, defaultStart, defaultEnd, daySessions);
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to fetch historical data from real market feed.');
@@ -54,9 +89,17 @@ export default function BacktestModal({
 
   if (!isOpen) return null;
 
+  const getTitle = () => {
+    if (datePreset === '7d') return '7-Day';
+    if (datePreset === '15d') return '15-Day';
+    if (datePreset === '30d') return '30-Day';
+    if (datePreset === '60d') return '60-Day (3 Months)';
+    return 'Custom Date';
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3.5 sm:p-6 overflow-hidden">
-      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 sm:p-5 max-h-[82dvh] sm:max-h-[86vh] flex flex-col overflow-hidden my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-hidden">
+      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 sm:p-4.5 max-h-[84dvh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto">
         
         {/* Close Button */}
         <button
@@ -66,7 +109,7 @@ export default function BacktestModal({
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Header - Sleek & Ultra-Compact for Mobile */}
+        {/* Modal Header */}
         <div className="flex items-center justify-between gap-2 mb-2 pr-9 sm:pr-10 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#ff5722] flex items-center justify-center text-white shadow-2xs shrink-0">
@@ -75,14 +118,14 @@ export default function BacktestModal({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
-                  30-Day Backtest Report
+                  {getTitle()} Backtest Report
                 </h2>
                 <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-[#e6f4ea] text-[#00a86b] uppercase">
                   v2 • Confluence
                 </span>
               </div>
               <p className="hidden sm:block text-[11px] text-slate-500 truncate">
-                100% Real Exchange 5-Min Candles • VWAP + 9 EMA + Body Conviction Filter
+                Real 5-Min Candles (Up to 60 Days / 4,500+ Candles) • VWAP + 9 EMA + Body Filter
               </p>
             </div>
           </div>
@@ -98,15 +141,113 @@ export default function BacktestModal({
           </button>
         </div>
 
+        {/* Quick Date Range & Custom Filter Bar */}
+        {!isLoading && allSessionsData.length > 0 && (
+          <div className="mb-2 shrink-0 bg-slate-50 border border-slate-200/90 rounded-xl p-1.5 sm:p-2 shadow-2xs">
+            <div className="flex items-center justify-between gap-1 flex-wrap">
+              
+              {/* Presets */}
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden xs:inline">
+                  Range:
+                </span>
+                {[
+                  { id: '7d', label: '7D' },
+                  { id: '15d', label: '15D' },
+                  { id: '30d', label: '30D' },
+                  { id: '60d', label: 'Max (60D)' }
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setDatePreset(p.id);
+                      setShowCustomPicker(false);
+                      applyFilter(p.id);
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                      datePreset === p.id && !showCustomPicker
+                        ? 'bg-[#387ed1] text-white shadow-2xs'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => {
+                    const next = !showCustomPicker;
+                    setShowCustomPicker(next);
+                    if (next) setDatePreset('custom');
+                  }}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
+                    showCustomPicker || datePreset === 'custom'
+                      ? 'bg-[#387ed1] text-white shadow-2xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Calendar className="w-3 h-3" />
+                  <span>Custom Date</span>
+                </button>
+              </div>
+
+              {/* Feed note */}
+              <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
+                Exchange Feed Limit: Last 60 Days
+              </span>
+
+            </div>
+
+            {/* Custom Date Pickers */}
+            {showCustomPicker && (
+              <div className="flex items-center gap-2 pt-1.5 mt-1.5 border-t border-slate-200 text-xs flex-wrap">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">From:</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    min={allSessionsData[0]?.date}
+                    max={allSessionsData[allSessionsData.length - 1]?.date}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      applyFilter('custom', e.target.value, endDate);
+                    }}
+                    className="px-1.5 py-0.5 rounded border border-slate-200 bg-white text-slate-700 text-xs font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">To:</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={allSessionsData[0]?.date}
+                    max={allSessionsData[allSessionsData.length - 1]?.date}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      applyFilter('custom', startDate, e.target.value);
+                    }}
+                    className="px-1.5 py-0.5 rounded border border-slate-200 bg-white text-slate-700 text-xs font-mono"
+                  />
+                </div>
+
+                <span className="text-[10px] text-slate-400">
+                  (Showing {sessionsData.length} sessions)
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Loading State */}
         {isLoading && (
           <div className="py-16 text-center flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-3" />
             <h3 className="text-sm font-bold text-slate-800">
-              Fetching 2,200+ Real 5-Minute Candles...
+              Fetching 4,500+ Real 5-Minute Candles (Up to 60 Days)...
             </h3>
             <p className="text-xs text-slate-400 mt-1">
-              Calculating 7-Layer Confluence across all 30 trading sessions
+              Calculating 7-Layer Confluence across all historical trading sessions
             </p>
           </div>
         )}
