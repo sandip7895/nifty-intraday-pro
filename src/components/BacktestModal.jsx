@@ -56,33 +56,33 @@ export default function BacktestModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-xl sm:rounded-2xl shadow-2xl p-3.5 sm:p-5 max-h-[95vh] flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-xl sm:rounded-2xl shadow-2xl p-2.5 sm:p-5 max-h-[96vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+          className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer z-10"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Title */}
-        <div className="flex items-center justify-between gap-3 mb-3 pr-8 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded bg-[#ff5722] flex items-center justify-center text-white shadow-2xs font-bold text-sm">
-              <Database className="w-4 h-4" />
+        {/* Modal Header - Sleek & Ultra-Compact for Mobile */}
+        <div className="flex items-center justify-between gap-2 mb-2 pr-7 sm:pr-8 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#ff5722] flex items-center justify-center text-white shadow-2xs shrink-0">
+              <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900 leading-tight">
-                  30-Day Real NIFTY 50 Backtest Report
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+                  30-Day Backtest Report
                 </h2>
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#e6f4ea] text-[#00a86b] uppercase">
-                  v2 • Enhanced Confluence
+                <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-[#e6f4ea] text-[#00a86b] uppercase">
+                  v2 • Confluence
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500">
-                100% Real Exchange 5-Min Candles (Oct-Nov) • VWAP + 9 EMA + Body Conviction Filter
+              <p className="hidden sm:block text-[11px] text-slate-500 truncate">
+                100% Real Exchange 5-Min Candles • VWAP + 9 EMA + Body Conviction Filter
               </p>
             </div>
           </div>
@@ -90,10 +90,11 @@ export default function BacktestModal({
           <button
             onClick={loadRealBacktestData}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-slate-300 hover:border-[#387ed1] hover:text-[#387ed1] text-slate-700 bg-white text-xs font-medium transition cursor-pointer"
+            title="Recalculate Backtest"
+            className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 hover:border-[#387ed1] hover:text-[#387ed1] text-slate-700 bg-white text-xs font-medium transition cursor-pointer shrink-0"
           >
             <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Recalculate</span>
+            <span className="hidden sm:inline">Recalculate</span>
           </button>
         </div>
 
@@ -112,7 +113,7 @@ export default function BacktestModal({
 
         {/* Error State */}
         {error && (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-3 mb-4">
+          <div className="p-3 sm:p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
@@ -128,67 +129,67 @@ export default function BacktestModal({
 
         {/* Backtest Statistics - Sleek Compact Integrated Bar */}
         {!isLoading && backtestResult && (
-          <div className="space-y-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="space-y-2 sm:space-y-3 flex-1 min-h-0 flex flex-col overflow-hidden">
             
-            {/* Integrated Compact Stats Bar (Replaces bulky 4 boxes) */}
-            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2 grid grid-cols-2 sm:grid-cols-4 gap-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 shrink-0 shadow-2xs">
+            {/* Integrated Compact Stats Bar */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-1.5 sm:p-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 shrink-0 shadow-2xs">
               
               {/* Stat 1: Total Trades */}
-              <div className="px-3 py-1 flex flex-col justify-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="px-2 sm:px-3 py-1 flex flex-col justify-center">
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                   Total Sessions
                 </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-lg font-black font-mono text-slate-800">
+                <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
+                  <span className="text-sm sm:text-base md:text-lg font-black font-mono text-slate-800 whitespace-nowrap">
                     {backtestResult.totalTrades}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium">
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium whitespace-nowrap">
                     (1 trade/day)
                   </span>
                 </div>
               </div>
 
               {/* Stat 2: Win Rate */}
-              <div className="px-3 py-1 flex flex-col justify-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Accuracy (Win Rate)
+              <div className="px-2 sm:px-3 py-1 flex flex-col justify-center">
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
+                  Win Rate (Accuracy)
                 </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-lg font-bold font-mono text-[#00a86b]">
+                <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
+                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-[#00a86b] whitespace-nowrap">
                     {backtestResult.winRate}%
                   </span>
-                  <span className="text-[10px] text-[#00a86b] font-bold bg-[#e6f4ea] px-1 py-0.2 rounded">
+                  <span className="text-[9px] sm:text-[10px] text-[#00a86b] font-bold bg-[#e6f4ea] px-1 py-0.2 rounded whitespace-nowrap">
                     {backtestResult.winningTrades}W / {backtestResult.losingTrades}L
                   </span>
                 </div>
               </div>
 
               {/* Stat 3: Net Profit */}
-              <div className="px-3 py-1 flex flex-col justify-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="px-2 sm:px-3 py-1 flex flex-col justify-center">
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                   Net P&L (1 Lot)
                 </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-lg font-bold font-mono text-[#387ed1]">
+                <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
+                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-[#387ed1] whitespace-nowrap">
                     +₹{backtestResult.netPnl.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-medium">
+                  <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium whitespace-nowrap">
                     PF: {backtestResult.profitFactor}
                   </span>
                 </div>
               </div>
 
               {/* Stat 4: Max Drawdown */}
-              <div className="px-3 py-1 flex flex-col justify-center">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              <div className="px-2 sm:px-3 py-1 flex flex-col justify-center">
+                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
                   Max Drawdown (Risk)
                 </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-lg font-bold font-mono text-[#df514c]">
+                <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
+                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-[#df514c] whitespace-nowrap">
                     -₹{backtestResult.maxDrawdown.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    Strict 15% SL
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                    15% SL
                   </span>
                 </div>
               </div>
@@ -197,12 +198,12 @@ export default function BacktestModal({
 
             {/* Day-by-Day Historical Trades Table with "Replay on Chart" button */}
             <div className="flex-1 min-h-0 flex flex-col">
-              <div className="flex items-center justify-between mb-1.5 shrink-0">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                  Historical Day-by-Day Real Trades (Last 30 Days)
+              <div className="flex items-center justify-between mb-1 sm:mb-1.5 shrink-0">
+                <h3 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wide">
+                  Historical Day Trades (Last 30 Days)
                 </h3>
-                <span className="text-[11px] text-slate-400">
-                  Click <strong>"Replay Day"</strong> to load session onto chart
+                <span className="text-[10px] sm:text-[11px] text-slate-400">
+                  Click <strong>"Replay Day"</strong> for chart
                 </span>
               </div>
 
@@ -210,14 +211,14 @@ export default function BacktestModal({
                 <table className="w-full text-xs text-left min-w-[620px]">
                   <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 text-[10px] uppercase font-bold sticky top-0 backdrop-blur-xs">
                     <tr>
-                      <th className="py-2.5 px-3">DATE & TIME</th>
-                      <th className="py-2.5 px-3">CONTRACT</th>
-                      <th className="py-2.5 px-3">SPOT</th>
-                      <th className="py-2.5 px-3">ENTRY</th>
-                      <th className="py-2.5 px-3">EXIT</th>
-                      <th className="py-2.5 px-3">P&L (1 LOT)</th>
-                      <th className="py-2.5 px-3">OUTCOME</th>
-                      <th className="py-2.5 px-3 text-right">ACTION</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">DATE & TIME</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">CONTRACT</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">SPOT</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">ENTRY</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">EXIT</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">P&L (1 LOT)</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">OUTCOME</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3 text-right">ACTION</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-mono">
