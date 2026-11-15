@@ -200,7 +200,7 @@ export function run60DayBacktest(daySessions) {
             qty: 65,
             status: 'OPEN'
           };
-        } 
+        }
         // Condition for BUY_PE: Close < CPR Bottom AND Close < VWAP
         else if (candle.close < cprBottom && candle.close < vwap && candle.close < candle.open) {
           const entryPrice = 125.00;
@@ -237,7 +237,7 @@ export function run60DayBacktest(daySessions) {
           activeTrade.exitPrice = activeTrade.sl;
           activeTrade.pnl = Number(((activeTrade.sl - activeTrade.entryPrice) * activeTrade.qty).toFixed(2));
           activeTrade.exitTime = candleDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-          activeTrade.result = 'Stop Loss Hit (-15%)';
+          activeTrade.result = 'SL Hit (-15%)';
           tradeLog.push(activeTrade);
           break;
         } else if (i === currentDay.candles.length - 1) {
@@ -257,7 +257,7 @@ export function run60DayBacktest(daySessions) {
   const winningTrades = tradeLog.filter(t => t.pnl > 0).length;
   const losingTrades = tradeLog.filter(t => t.pnl < 0).length;
   const winRate = totalTrades > 0 ? Number(((winningTrades / totalTrades) * 100).toFixed(1)) : 0;
-  
+
   const totalProfit = tradeLog.reduce((acc, t) => acc + (t.pnl > 0 ? t.pnl : 0), 0);
   const totalLoss = Math.abs(tradeLog.reduce((acc, t) => acc + (t.pnl < 0 ? t.pnl : 0), 0));
   const netPnl = Number((totalProfit - totalLoss).toFixed(2));

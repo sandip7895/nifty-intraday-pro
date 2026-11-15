@@ -278,7 +278,7 @@ export default function TradingChart({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isMobileScreen ? 'SL' : `🛑 STOP LOSS: ₹${spotSl} (EXIT)`
+          title: isMobileScreen ? 'SL' : `SL: ₹${spotSl} (EXIT)`
         });
 
         // Determine exact Entry candle index
@@ -445,7 +445,7 @@ export default function TradingChart({
       </div>
 
       {/* Chart Canvas */}
-      <div className="relative flex-1 w-full min-h-0" ref={chartContainerRef}>
+      <div className="relative flex-1 w-full max-w-full min-h-0 overflow-hidden" ref={chartContainerRef}>
         {(!candles || candles.length === 0) && (
           <div className="absolute inset-0 z-20 bg-white/90 flex flex-col items-center justify-center p-6 text-center">
             <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center mb-3">

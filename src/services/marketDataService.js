@@ -224,7 +224,7 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
     triggeredTrade.exitPrice = exitPrice;
     triggeredTrade.exitCandleIndex = exitCandleIndex;
     triggeredTrade.pnl = pnl;
-    triggeredTrade.result = outcome === 'TARGET_HIT' ? 'Target 1 Achieved (+22%)' : 'Stop Loss Hit (-15%)';
+    triggeredTrade.result = outcome === 'TARGET_HIT' ? 'Target 1 Achieved (+22%)' : 'SL Hit (-15%)';
     triggeredTrade.accuracy = outcome === 'TARGET_HIT' ? 88 : 50;
   }
 

@@ -11,7 +11,7 @@ export default function SignalCard({
 
   const spotEntry = activeSignal.spotTrigger || 25189.10;
   const isCe = isBuyCe || !isBuyPe;
-  
+
   // Logical spot SL & targets aligned with trade direction
   const spotSl = isCe ? Number((spotEntry - 35).toFixed(0)) : Number((spotEntry + 35).toFixed(0));
   const spotTarget1 = isCe ? Number((spotEntry + 50).toFixed(0)) : Number((spotEntry - 50).toFixed(0));
@@ -30,8 +30,8 @@ export default function SignalCard({
   const slRisk = Math.round((entryPrice - slPrice) * qty);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-md p-3 sm:p-3.5 shadow-2xs flex flex-col justify-between h-full w-full font-sans">
-      
+    <div className="bg-white border border-slate-200 rounded-md p-2.5 sm:p-3.5 shadow-2xs flex flex-col justify-between h-full w-full max-w-full overflow-hidden font-sans">
+
       {/* Zerodha Kite Header: Instrument & Live Price */}
       <div className="pb-2.5 border-b border-slate-100 shrink-0">
         <div className="flex items-start justify-between">
@@ -46,14 +46,13 @@ export default function SignalCard({
                 </span>
               )}
             </div>
-            
+
             <div className="flex items-center gap-2 mt-1">
               {!isWait && (
-                <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded ${
-                  isBuyCe 
-                    ? 'text-[#00a86b] bg-[#e6f4ea] border border-[#ceead6]' 
-                    : 'text-[#ff5722] bg-[#fbe9e7] border border-[#ffccbc]'
-                }`}>
+                <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded ${isBuyCe
+                  ? 'text-[#00a86b] bg-[#e6f4ea] border border-[#ceead6]'
+                  : 'text-[#ff5722] bg-[#fbe9e7] border border-[#ffccbc]'
+                  }`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${isBuyCe ? 'bg-[#00a86b]' : 'bg-[#ff5722]'} animate-pulse`}></span>
                   {isBuyCe ? 'BULLISH CALL (CE)' : 'BEARISH PUT (PE)'}
                 </span>
@@ -74,12 +73,11 @@ export default function SignalCard({
               </div>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
                 {activeSignal.result ? (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${
-                    activeSignal.status === 'TARGET_HIT' 
-                      ? 'bg-[#e6f4ea] text-[#00a86b]' 
-                      : 'bg-[#fbe9e7] text-[#df514c]'
-                  }`}>
-                    {activeSignal.status === 'TARGET_HIT' ? 'Target Achieved' : 'Stop Loss Hit'}
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${activeSignal.status === 'TARGET_HIT'
+                    ? 'bg-[#e6f4ea] text-[#00a86b]'
+                    : 'bg-[#fbe9e7] text-[#df514c]'
+                    }`}>
+                    {activeSignal.status === 'TARGET_HIT' ? 'Target Achieved' : 'SL Hit'}
                   </span>
                 ) : (
                   <span className="text-[10px] font-semibold text-slate-500">
@@ -98,10 +96,10 @@ export default function SignalCard({
         </div>
       ) : (
         <div className="my-2 space-y-2 flex-1 flex flex-col justify-around">
-          
+
           {/* Zerodha Kite Parameters Grid (Entry, SL, Target 1, Target 2) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-            
+
             {/* 1. ENTRY */}
             <div className="p-2 rounded bg-slate-50 border border-slate-200">
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -184,11 +182,10 @@ export default function SignalCard({
           <div className="space-y-1.5 pt-0.5">
             <button
               onClick={() => onExecutePaperTrade(activeSignal)}
-              className={`w-full py-2.5 px-4 rounded font-bold text-xs uppercase tracking-wider transition active:scale-[0.99] text-white shadow-2xs flex items-center justify-center gap-2 cursor-pointer ${
-                isBuyCe
-                  ? 'bg-[#387ed1] hover:bg-[#2b6cb0]'
-                  : 'bg-[#ff5722] hover:bg-[#e64a19]'
-              }`}
+              className={`w-full py-2.5 px-4 rounded font-bold text-xs uppercase tracking-wider transition active:scale-[0.99] text-white shadow-2xs flex items-center justify-center gap-2 cursor-pointer ${isBuyCe
+                ? 'bg-[#387ed1] hover:bg-[#2b6cb0]'
+                : 'bg-[#ff5722] hover:bg-[#e64a19]'
+                }`}
             >
               <span>{isBuyCe ? 'BUY CALL' : 'BUY PUT'} • 1 LOT (65 QTY)</span>
             </button>

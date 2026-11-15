@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden !important;
+  position: relative;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 @layer base {
   body {
     @apply bg-slate-100 text-slate-800 antialiased selection:bg-blue-500/20 selection:text-blue-900;

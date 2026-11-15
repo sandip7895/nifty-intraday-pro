@@ -75,7 +75,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen w-screen flex flex-col bg-[#f4f6f8] text-slate-800 overflow-y-auto lg:overflow-hidden font-sans select-none">
+    <div className="min-h-screen lg:h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#f4f6f8] text-slate-800 overflow-y-auto lg:overflow-hidden font-sans select-none">
       
       {/* Top Sleek Zerodha Kite Navbar */}
       <Navbar
