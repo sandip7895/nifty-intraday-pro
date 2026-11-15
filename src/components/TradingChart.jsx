@@ -115,6 +115,7 @@ class SignalBadgesPrimitive {
 }
 
 export default function TradingChart({
+  instrument = 'NIFTY',
   candles,
   cpr,
   currentVWAP,
@@ -390,7 +391,9 @@ export default function TradingChart({
         {/* Left: Ticker & Timeframes */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">NIFTY 50</span>
+            <span className="text-xs font-bold text-slate-800 tracking-tight">
+              {instrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'}
+            </span>
             <span className="text-[10px] text-slate-400 font-semibold uppercase">INDEX</span>
           </div>
 

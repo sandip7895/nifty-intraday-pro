@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   calculateCPR,
   calculateEMA,
-  calculateVWAP,
-  calculateRSI
+  calculateVWAP
 } from '../data/tradingLogic';
-import { fetchNiftyLatestSession } from '../services/marketDataService';
+import {
+  INSTRUMENTS,
+  fetchLatestSession
+} from '../services/marketDataService';
 
-// Check if Indian Stock Market (NSE) is open in IST
+// Check if Indian Stock Market (NSE / BSE) is open in IST
 export function checkIsMarketOpen() {
   const now = new Date();
   const istString = now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' });
@@ -27,6 +29,7 @@ export function checkIsMarketOpen() {
 }
 
 export function useTradingSimulation() {
+  const [instrument, setInstrument] = useState('NIFTY'); // 'NIFTY' | 'SENSEX'
   const [candles, setCandles] = useState([]);
   const [prevDay, setPrevDay] = useState(null);
   const [confirmedTrade, setConfirmedTrade] = useState(null);
@@ -38,46 +41,57 @@ export function useTradingSimulation() {
   const [positions, setPositions] = useState([]);
   const [closedTrades, setClosedTrades] = useState([]);
 
-  // Fetch real market session
-  const loadRealMarketData = useCallback(async () => {
+  const currentConfig = INSTRUMENTS[instrument] || INSTRUMENTS.NIFTY;
+
+  // Fetch real market session for the selected instrument
+  const loadRealMarketData = useCallback(async (targetInstrument = instrument) => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await fetchNiftyLatestSession();
+      const data = await fetchLatestSession(targetInstrument);
       if (data && data.candles && data.candles.length > 0) {
         setCandles(data.candles);
         setPrevDay(data.prevDay);
         setConfirmedTrade(data.confirmedTrade);
       }
     } catch (err) {
-      console.error('Error fetching real market data:', err);
+      console.error(`Error fetching real market data for ${targetInstrument}:`, err);
       setError(err.message || 'Error loading live market data');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [instrument]);
 
-  // Fetch on mount
+  // Switch between NIFTY 50 and BSE SENSEX
+  const selectInstrument = useCallback((newInstrument) => {
+    if (newInstrument === instrument) return;
+    setInstrument(newInstrument);
+    setCandles([]);
+    setConfirmedTrade(null);
+    loadRealMarketData(newInstrument);
+  }, [instrument, loadRealMarketData]);
+
+  // Fetch on mount or when instrument changes
   useEffect(() => {
-    loadRealMarketData();
+    loadRealMarketData(instrument);
 
     const interval = setInterval(() => {
       const open = checkIsMarketOpen();
       setIsMarketOpen(open);
       if (open) {
-        loadRealMarketData();
+        loadRealMarketData(instrument);
       }
     }, 20000); // 20s refresh
 
     return () => clearInterval(interval);
-  }, [loadRealMarketData]);
+  }, [instrument, loadRealMarketData]);
 
   // Derived metrics from 100% real candles
   const hasCandles = candles.length > 0;
   const lastCandle = hasCandles ? candles[candles.length - 1] : null;
   const firstCandle = hasCandles ? candles[0] : null;
 
-  const currentPrice = lastCandle ? lastCandle.close : 25144.30;
+  const currentPrice = lastCandle ? lastCandle.close : currentConfig.defaultPrice;
   const dayOpen = firstCandle ? firstCandle.open : currentPrice;
   const dayHigh = hasCandles ? Math.max(...candles.map(c => c.high)) : currentPrice;
   const dayLow = hasCandles ? Math.min(...candles.map(c => c.low)) : currentPrice;
@@ -88,9 +102,15 @@ export function useTradingSimulation() {
   const cpr = prevDay
     ? calculateCPR(prevDay.high, prevDay.low, prevDay.close)
     : (hasCandles ? calculateCPR(dayHigh, dayLow, currentPrice) : {
-      pivot: currentPrice, tc: currentPrice + 15, bc: currentPrice - 15,
-      r1: currentPrice + 35, s1: currentPrice - 35, r2: currentPrice + 70, s2: currentPrice - 70,
-      cprWidth: 30, cprType: 'Narrow CPR (Trending)'
+      pivot: currentPrice,
+      tc: currentPrice + (instrument === 'SENSEX' ? 45 : 15),
+      bc: currentPrice - (instrument === 'SENSEX' ? 45 : 15),
+      r1: currentPrice + (instrument === 'SENSEX' ? 100 : 35),
+      s1: currentPrice - (instrument === 'SENSEX' ? 100 : 35),
+      r2: currentPrice + (instrument === 'SENSEX' ? 200 : 70),
+      s2: currentPrice - (instrument === 'SENSEX' ? 200 : 70),
+      cprWidth: instrument === 'SENSEX' ? 90 : 30,
+      cprType: 'Narrow CPR (Trending)'
     });
 
   // Real Technical Indicators
@@ -106,6 +126,8 @@ export function useTradingSimulation() {
     action: confirmedTrade.type,
     actionText: confirmedTrade.type === 'BUY_CE' ? 'BUY CALL (BULLISH)' : 'BUY PUT (BEARISH)',
     strikeName: confirmedTrade.strike,
+    instrument: confirmedTrade.instrument || currentConfig.id,
+    lotSize: confirmedTrade.lotSize || currentConfig.lotSize,
     spotTrigger: confirmedTrade.spotEntry,
     optionEntry: confirmedTrade.entryPrice,
     optionSl: confirmedTrade.sl,
@@ -122,12 +144,14 @@ export function useTradingSimulation() {
   } : {
     action: 'WAIT',
     actionText: 'Awaiting Setup',
-    strikeName: `NIFTY ${Math.round(currentPrice / 50) * 50} CE`,
+    strikeName: `${currentConfig.shortName} ${Math.round(currentPrice / currentConfig.strikeStep) * currentConfig.strikeStep} CE`,
+    instrument: currentConfig.id,
+    lotSize: currentConfig.lotSize,
     spotTrigger: currentPrice,
-    optionEntry: 135,
-    optionSl: 115,
-    optionTarget1: 165,
-    optionTarget2: 190,
+    optionEntry: currentConfig.defaultCeEntry,
+    optionSl: Number((currentConfig.defaultCeEntry * (1 - currentConfig.slPct)).toFixed(1)),
+    optionTarget1: Number((currentConfig.defaultCeEntry * (1 + currentConfig.target1Pct)).toFixed(1)),
+    optionTarget2: Number((currentConfig.defaultCeEntry * (1 + currentConfig.target2Pct)).toFixed(1)),
     accuracy: 0,
     timestamp: '--'
   };
@@ -136,11 +160,11 @@ export function useTradingSimulation() {
   const executePaperTrade = (signal) => {
     if (!signal || signal.action === 'WAIT') return false;
 
-    const qty = 65; // 1 lot NIFTY (Current 2026 NSE Lot Size)
+    const qty = signal.lotSize || currentConfig.lotSize;
     const requiredMargin = Math.round(signal.optionEntry * qty);
 
     if (paperBalance < requiredMargin) {
-      alert('Insufficient virtual balance! Please reset funds.');
+      alert(`Insufficient virtual balance! Required: ₹${requiredMargin.toLocaleString('en-IN')}. Please reset funds.`);
       return false;
     }
 
@@ -149,6 +173,7 @@ export function useTradingSimulation() {
       time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
       type: signal.action,
       strike: signal.strikeName,
+      instrument: signal.instrument || currentConfig.id,
       qty,
       entryPrice: signal.optionEntry,
       currentPrice: signal.optionEntry,
@@ -178,6 +203,7 @@ export function useTradingSimulation() {
         time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
         type: pos.type,
         strike: pos.strike,
+        instrument: pos.instrument,
         qty: pos.qty,
         entryPrice: pos.entryPrice,
         exitPrice: pos.currentPrice,
@@ -198,6 +224,9 @@ export function useTradingSimulation() {
   };
 
   return {
+    instrument,
+    instrumentConfig: currentConfig,
+    selectInstrument,
     candles,
     hasCandles,
     currentPrice,
@@ -220,6 +249,6 @@ export function useTradingSimulation() {
     isMarketOpen,
     isLoading,
     error,
-    refreshData: loadRealMarketData
+    refreshData: () => loadRealMarketData(instrument)
   };
 }

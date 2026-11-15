@@ -1,9 +1,45 @@
-// Unified Real Market Data & High-Accuracy Strategy Engine for NIFTY 50
+// Unified Real Market Data & High-Accuracy Strategy Engine for NIFTY 50 & BSE SENSEX
 import {
   calculateSupertrend,
   calculateADXSeries,
   calculateRSISeries
 } from '../data/tradingLogic.js';
+
+// Official Exchange Specifications for Dual Index Support
+export const INSTRUMENTS = {
+  NIFTY: {
+    id: 'NIFTY',
+    name: 'NIFTY 50',
+    shortName: 'NIFTY',
+    exchange: 'NSE',
+    symbol: '%5ENSEI',
+    lotSize: 65,         // Official 2026 NSE Lot Size
+    strikeStep: 50,      // 50-point strike spacing
+    defaultCeEntry: 135.00,
+    defaultPeEntry: 130.00,
+    delta: 0.52,         // Intraday ATM delta
+    target1Pct: 0.22,    // +22%
+    target2Pct: 0.40,    // +40%
+    slPct: 0.15,         // -15%
+    defaultPrice: 25144.30
+  },
+  SENSEX: {
+    id: 'SENSEX',
+    name: 'BSE SENSEX',
+    shortName: 'SENSEX',
+    exchange: 'BSE',
+    symbol: '%5EBSESN',
+    lotSize: 20,         // Official BSE SENSEX Lot Size
+    strikeStep: 100,     // 100-point strike spacing
+    defaultCeEntry: 350.00,
+    defaultPeEntry: 340.00,
+    delta: 0.50,         // Intraday ATM delta
+    target1Pct: 0.22,    // +22%
+    target2Pct: 0.40,    // +40%
+    slPct: 0.15,         // -15%
+    defaultPrice: 81592.45
+  }
+};
 
 // Helper to parse candles from Yahoo Finance
 export function parseYahooCandles(result) {
@@ -46,10 +82,12 @@ export function parseYahooCandles(result) {
 
 // Single Unified Session Trade Evaluator
 // Used identically by BOTH the Live Screen AND the Backtest Engine
-export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
+export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumentKey = 'NIFTY') {
   if (!currentDayCandles || currentDayCandles.length < 10) {
     return null;
   }
+
+  const config = INSTRUMENTS[instrumentKey] || INSTRUMENTS.NIFTY;
 
   const prevH = prevDayLevels?.high || Math.max(...currentDayCandles.map(c => c.high));
   const prevL = prevDayLevels?.low || Math.min(...currentDayCandles.map(c => c.low));
@@ -134,16 +172,18 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
         (c.close > cprTop || prevC.close <= vwap);
 
       if (isBearishBreak) {
-        const atmStrike = Math.round(c.close / 50) * 50;
-        const entryPrice = 130.00;
-        const target1 = 158.60; // +22%
-        const target2 = 182.00; // +40%
-        const sl = 110.50; // -15%
+        const atmStrike = Math.round(c.close / config.strikeStep) * config.strikeStep;
+        const entryPrice = config.defaultPeEntry;
+        const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
+        const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
+        const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
 
         triggeredTrade = {
           type: 'BUY_PE',
           actionText: 'BUY PUT (BEARISH)',
-          strike: `NIFTY ${atmStrike} PE`,
+          strike: `${config.shortName} ${atmStrike} PE`,
+          instrument: config.id,
+          lotSize: config.lotSize,
           spotEntry: c.close,
           entryPrice,
           target1,
@@ -161,16 +201,18 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
         };
         break; // Lock day's primary setup
       } else if (isBullishBreak) {
-        const atmStrike = Math.round(c.close / 50) * 50;
-        const entryPrice = 135.00;
-        const target1 = 164.70; // +22%
-        const target2 = 189.00; // +40%
-        const sl = 114.80; // -15%
+        const atmStrike = Math.round(c.close / config.strikeStep) * config.strikeStep;
+        const entryPrice = config.defaultCeEntry;
+        const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
+        const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
+        const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
 
         triggeredTrade = {
           type: 'BUY_CE',
           actionText: 'BUY CALL (BULLISH)',
-          strike: `NIFTY ${atmStrike} CE`,
+          strike: `${config.shortName} ${atmStrike} CE`,
+          instrument: config.id,
+          lotSize: config.lotSize,
           spotEntry: c.close,
           entryPrice,
           target1,
@@ -202,26 +244,26 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
     for (let k = triggeredTrade.entryCandleIndex + 1; k < currentDayCandles.length; k++) {
       const kc = currentDayCandles[k];
       const spotDelta = kc.close - triggeredTrade.spotEntry;
-      const optDelta = isCe ? spotDelta * 0.52 : -spotDelta * 0.52;
+      const optDelta = isCe ? spotDelta * config.delta : -spotDelta * config.delta;
       const optPrice = triggeredTrade.entryPrice + optDelta;
 
       if (optPrice >= triggeredTrade.target1) {
         outcome = 'TARGET_HIT';
         exitPrice = triggeredTrade.target1;
         exitCandleIndex = k;
-        pnl = Number(((triggeredTrade.target1 - triggeredTrade.entryPrice) * 65).toFixed(2));
+        pnl = Number(((triggeredTrade.target1 - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
         break;
       } else if (optPrice <= triggeredTrade.sl) {
         outcome = 'SL_HIT';
         exitPrice = triggeredTrade.sl;
         exitCandleIndex = k;
-        pnl = Number(((triggeredTrade.sl - triggeredTrade.entryPrice) * 65).toFixed(2));
+        pnl = Number(((triggeredTrade.sl - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
         break;
       } else if (k === currentDayCandles.length - 1) {
         outcome = optPrice >= triggeredTrade.entryPrice ? 'TARGET_HIT' : 'SL_HIT';
         exitPrice = Number(optPrice.toFixed(1));
         exitCandleIndex = k;
-        pnl = Number(((optPrice - triggeredTrade.entryPrice) * 65).toFixed(2));
+        pnl = Number(((optPrice - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
         break;
       }
     }
@@ -237,11 +279,12 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
   return triggeredTrade;
 }
 
-// Fetch Latest Real Session (e.g. Friday Nov 13)
-export async function fetchNiftyLatestSession() {
-  const response = await fetch('/yahoo-api/v8/finance/chart/%5ENSEI?interval=5m&range=5d');
+// Fetch Latest Real Session (for NIFTY or SENSEX)
+export async function fetchLatestSession(instrumentKey = 'NIFTY') {
+  const config = INSTRUMENTS[instrumentKey] || INSTRUMENTS.NIFTY;
+  const response = await fetch(`/yahoo-api/v8/finance/chart/${config.symbol}?interval=5m&range=5d`);
   if (!response.ok) {
-    throw new Error(`Market Data Error: ${response.statusText}`);
+    throw new Error(`Market Data Error (${config.name}): ${response.statusText}`);
   }
 
   const json = await response.json();
@@ -249,7 +292,7 @@ export async function fetchNiftyLatestSession() {
   const allCandles = parseYahooCandles(result);
 
   if (allCandles.length === 0) {
-    throw new Error('No real candles returned from market feed');
+    throw new Error(`No real candles returned from ${config.name} feed`);
   }
 
   const daysMap = {};
@@ -279,22 +322,28 @@ export async function fetchNiftyLatestSession() {
   };
 
   // Evaluate the actual confirmed trade for this session
-  const confirmedTrade = evaluateSessionTrade(currentSessionCandles, prevDayLevels);
+  const confirmedTrade = evaluateSessionTrade(currentSessionCandles, prevDayLevels, instrumentKey);
 
   return {
     candles: currentSessionCandles,
     prevDay: prevDayLevels,
     confirmedTrade,
     latestDate,
-    regularMarketPrice: result?.meta?.regularMarketPrice || currentSessionCandles[currentSessionCandles.length - 1].close
+    regularMarketPrice: result?.meta?.regularMarketPrice || currentSessionCandles[currentSessionCandles.length - 1].close,
+    instrument: config.id,
+    lotSize: config.lotSize
   };
 }
 
+// Backward-compatible alias
+export const fetchNiftyLatestSession = () => fetchLatestSession('NIFTY');
+
 // Fetch Full Real Historical 5-Minute Candles (Up to 60 Days Max Available from Free Exchange Feed)
-export async function fetchNiftyHistoricalCandles(range = '60d') {
-  const response = await fetch(`/yahoo-api/v8/finance/chart/%5ENSEI?interval=5m&range=${range}`);
+export async function fetchHistoricalCandles(range = '60d', instrumentKey = 'NIFTY') {
+  const config = INSTRUMENTS[instrumentKey] || INSTRUMENTS.NIFTY;
+  const response = await fetch(`/yahoo-api/v8/finance/chart/${config.symbol}?interval=5m&range=${range}`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch historical data: ${response.statusText}`);
+    throw new Error(`Failed to fetch historical data for ${config.name}: ${response.statusText}`);
   }
 
   const json = await response.json();
@@ -317,11 +366,14 @@ export async function fetchNiftyHistoricalCandles(range = '60d') {
   }));
 }
 
-export const fetchNifty30DayCandles = fetchNiftyHistoricalCandles;
-export const fetchNifty60DayCandles = fetchNiftyHistoricalCandles;
+// Backward-compatible aliases
+export const fetchNiftyHistoricalCandles = (range = '60d') => fetchHistoricalCandles(range, 'NIFTY');
+export const fetchNifty30DayCandles = (range = '60d') => fetchHistoricalCandles(range, 'NIFTY');
+export const fetchNifty60DayCandles = (range = '60d') => fetchHistoricalCandles(range, 'NIFTY');
 
-// 30-Day Backtest using the EXACT same evaluateSessionTrade function
-export function run30DayBacktest(daySessions) {
+// Universal Backtest for NIFTY & SENSEX using the EXACT same evaluateSessionTrade function
+export function runBacktest(daySessions, instrumentKey = 'NIFTY') {
+  const config = INSTRUMENTS[instrumentKey] || INSTRUMENTS.NIFTY;
   const tradeLog = [];
   let cumulativePnl = 0;
   let maxDrawdown = 0;
@@ -338,7 +390,7 @@ export function run30DayBacktest(daySessions) {
     const prevClose = prevDay.candles[prevDay.candles.length - 1].close;
 
     const prevDayLevels = { high: prevHigh, low: prevLow, close: prevClose };
-    const trade = evaluateSessionTrade(currentDay.candles, prevDayLevels);
+    const trade = evaluateSessionTrade(currentDay.candles, prevDayLevels, instrumentKey);
 
     if (trade) {
       tradeLog.push(trade);
@@ -372,9 +424,12 @@ export function run30DayBacktest(daySessions) {
     totalLoss: Number(totalLoss.toFixed(2)),
     profitFactor,
     maxDrawdown: Number(maxDrawdown.toFixed(2)),
-    trades: [...tradeLog].reverse() // Most recent first
+    trades: [...tradeLog].reverse(), // Most recent first
+    instrument: config.id,
+    lotSize: config.lotSize
   };
 }
 
-// Backward-compatibility alias
+// Backward-compatibility aliases
+export const run30DayBacktest = (sessions) => runBacktest(sessions, 'NIFTY');
 export const run60DayBacktest = run30DayBacktest;

@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 
 export default function Navbar({
+  selectedInstrument = 'NIFTY',
+  onSelectInstrument,
   currentPrice,
   priceChange,
   priceChangePercent,
@@ -38,23 +40,29 @@ export default function Navbar({
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2.5 sm:px-4 py-2 shrink-0 z-30 shadow-2xs w-full max-w-full overflow-hidden sticky top-0">
+    <header className="bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2 sm:px-4 py-2 shrink-0 z-30 shadow-2xs w-full max-w-full overflow-hidden sticky top-0 font-sans">
       <div className="w-full flex items-center justify-between gap-1.5 sm:gap-2 min-w-0">
         
-        {/* Left: Professional Brand & NIFTY 50 Spot Header */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+        {/* Left: Professional Brand & Index Switcher + Spot Header */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
           
           {/* Custom Fintech App Icon */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 flex items-center justify-center text-white shadow-xs border border-slate-700/40 p-1">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full text-emerald-400">
+            <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br ${
+              selectedInstrument === 'SENSEX'
+                ? 'from-purple-950 via-slate-900 to-indigo-950'
+                : 'from-slate-900 via-slate-800 to-blue-950'
+            } flex items-center justify-center text-white shadow-xs border border-slate-700/40 p-1`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-full h-full ${
+                selectedInstrument === 'SENSEX' ? 'text-purple-400' : 'text-emerald-400'
+              }`}>
                 <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
                 <polyline points="16 7 22 7 22 13" />
               </svg>
             </div>
             <div className="flex flex-col">
               <span className="font-black text-slate-900 text-xs sm:text-sm tracking-tight leading-none">
-                NIFTY 50
+                {selectedInstrument === 'SENSEX' ? 'SENSEX' : 'NIFTY 50'}
               </span>
               <span className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase leading-none mt-0.5 hidden xs:block">
                 INTRADAY PRO
@@ -62,14 +70,40 @@ export default function Navbar({
             </div>
           </div>
 
-          <div className="h-4 w-[1px] bg-slate-200 shrink-0"></div>
+          {/* Sahi / Kite Style Index Switcher Pill */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => onSelectInstrument && onSelectInstrument('NIFTY')}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-black rounded-md transition cursor-pointer ${
+                selectedInstrument === 'NIFTY'
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              NIFTY
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectInstrument && onSelectInstrument('SENSEX')}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-black rounded-md transition cursor-pointer ${
+                selectedInstrument === 'SENSEX'
+                  ? 'bg-purple-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              SENSEX
+            </button>
+          </div>
+
+          <div className="h-4 w-[1px] bg-slate-200 shrink-0 hidden xs:block"></div>
 
           {/* Clean Live Ticker */}
           <div className="flex items-baseline gap-1 sm:gap-1.5 font-mono min-w-0">
-            <span className="text-xs sm:text-base font-extrabold text-slate-900 tracking-tight">
+            <span className="text-xs sm:text-base font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
               ₹{currentPrice.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
             </span>
-            <span className={`text-[10px] sm:text-xs font-bold px-1 py-0.2 rounded shrink-0 ${
+            <span className={`text-[10px] sm:text-xs font-bold px-1 py-0.2 rounded shrink-0 whitespace-nowrap ${
               isUp ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50'
             }`}>
               {isUp ? '+' : ''}{priceChangePercent}%
@@ -77,17 +111,17 @@ export default function Navbar({
           </div>
 
           {/* Market Status Dot */}
-          <div className="flex items-center gap-1 text-[10px] text-slate-500 pl-1 border-l border-slate-200 hidden sm:flex shrink-0">
+          <div className="flex items-center gap-1 text-[10px] text-slate-500 pl-1 border-l border-slate-200 hidden md:flex shrink-0">
             <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
             <span className="text-[10px] uppercase font-bold text-slate-600">
-              {isMarketOpen ? 'NSE Live' : 'Closed'}
+              {isMarketOpen ? (selectedInstrument === 'SENSEX' ? 'BSE Live' : 'NSE Live') : 'Closed'}
             </span>
           </div>
 
         </div>
 
         {/* Right: Actions (Backtest, Funds, Fullscreen) */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           
           {/* Backtest Button */}
           <button
@@ -100,7 +134,7 @@ export default function Navbar({
           </button>
 
           {/* Funds Display */}
-          <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-50 border border-slate-200/90 px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-lg shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-50 border border-slate-200/90 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg shrink-0">
             <Wallet className="w-3 h-3 text-slate-500 hidden xs:inline" />
             <div className="text-right">
               <span className="text-[8px] text-slate-400 uppercase font-bold leading-none hidden sm:block">Funds</span>

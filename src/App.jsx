@@ -17,6 +17,8 @@ import {
 
 export default function App() {
   const {
+    instrument,
+    selectInstrument,
     candles: liveCandles,
     currentPrice: livePrice,
     priceChange: livePriceChange,
@@ -59,6 +61,8 @@ export default function App() {
     action: replayedDay.trade.type,
     actionText: replayedDay.trade.actionText,
     strikeName: replayedDay.trade.strike,
+    instrument: replayedDay.trade.instrument || (replayedDay.trade.strike?.includes('SENSEX') ? 'SENSEX' : 'NIFTY'),
+    lotSize: replayedDay.trade.lotSize || (replayedDay.trade.strike?.includes('SENSEX') ? 20 : 65),
     spotTrigger: replayedDay.trade.spotEntry,
     optionEntry: replayedDay.trade.entryPrice,
     optionSl: replayedDay.trade.sl,
@@ -87,6 +91,8 @@ export default function App() {
       
       {/* Top Sleek Sahi / Kite Style Navbar */}
       <Navbar
+        selectedInstrument={instrument}
+        onSelectInstrument={selectInstrument}
         currentPrice={currentPrice}
         priceChange={priceChange}
         priceChangePercent={priceChangePercent}
@@ -174,6 +180,7 @@ export default function App() {
               : 'h-[460px] sm:h-[540px] lg:h-full'
           } min-h-0`}>
             <TradingChart
+              instrument={isReplaying ? (replayedDay.trade.strike?.includes('SENSEX') ? 'SENSEX' : 'NIFTY') : instrument}
               candles={activeCandles}
               cpr={liveCpr}
               currentVWAP={currentVWAP}
@@ -274,11 +281,12 @@ export default function App() {
 
       </nav>
 
-      {/* 30-Day Backtest Modal */}
+      {/* Backtest Modal */}
       <BacktestModal
         isOpen={isBacktestModalOpen}
         onClose={() => setIsBacktestModalOpen(false)}
         onLoadDayToChart={handleLoadDayToChart}
+        currentInstrument={instrument}
       />
 
     </div>

@@ -11,15 +11,18 @@ import {
   RotateCcw
 } from 'lucide-react';
 import {
-  fetchNifty30DayCandles,
-  run30DayBacktest
+  fetchHistoricalCandles,
+  runBacktest,
+  INSTRUMENTS
 } from '../services/marketDataService';
 
 export default function BacktestModal({
   isOpen,
   onClose,
-  onLoadDayToChart
+  onLoadDayToChart,
+  currentInstrument = 'NIFTY'
 }) {
+  const [selectedInstrument, setSelectedInstrument] = useState(currentInstrument);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [backtestResult, setBacktestResult] = useState(null);
@@ -30,13 +33,15 @@ export default function BacktestModal({
   const [endDate, setEndDate] = useState('');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
 
+  // Sync selected instrument with prop when modal opens
   useEffect(() => {
     if (isOpen) {
-      loadRealBacktestData();
+      setSelectedInstrument(currentInstrument);
+      loadRealBacktestData(currentInstrument);
     }
-  }, [isOpen]);
+  }, [isOpen, currentInstrument]);
 
-  const applyFilter = (preset, customStart, customEnd, sessionsList) => {
+  const applyFilter = (preset, customStart, customEnd, sessionsList, inst = selectedInstrument) => {
     const list = sessionsList || allSessionsData;
     if (!list || list.length === 0) return;
 
@@ -57,19 +62,19 @@ export default function BacktestModal({
 
     if (filteredSessions.length > 0) {
       setSessionsData(filteredSessions);
-      const results = run30DayBacktest(filteredSessions);
+      const results = runBacktest(filteredSessions, inst);
       setBacktestResult(results);
     }
   };
 
-  const loadRealBacktestData = async () => {
+  const loadRealBacktestData = async (inst = selectedInstrument) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const daySessions = await fetchNifty30DayCandles();
+      const daySessions = await fetchHistoricalCandles('60d', inst);
       if (!daySessions || daySessions.length === 0) {
-        throw new Error('No historical candles returned from market feed');
+        throw new Error(`No historical candles returned from ${inst} market feed`);
       }
 
       setAllSessionsData(daySessions);
@@ -78,7 +83,7 @@ export default function BacktestModal({
       setStartDate(defaultStart);
       setEndDate(defaultEnd);
 
-      applyFilter('60d', defaultStart, defaultEnd, daySessions);
+      applyFilter(datePreset, defaultStart, defaultEnd, daySessions, inst);
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to fetch historical data from real market feed.');
@@ -87,7 +92,15 @@ export default function BacktestModal({
     }
   };
 
+  const handleInstrumentSwitch = (newInst) => {
+    if (newInst === selectedInstrument) return;
+    setSelectedInstrument(newInst);
+    loadRealBacktestData(newInst);
+  };
+
   if (!isOpen) return null;
+
+  const lotQty = selectedInstrument === 'SENSEX' ? 20 : 65;
 
   const getTitle = () => {
     if (datePreset === '60d') return '60-Day (3 Months)';
@@ -112,33 +125,61 @@ export default function BacktestModal({
         {/* Modal Header */}
         <div className="flex items-center justify-between gap-2 mb-2 pr-9 sm:pr-10 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#ff5722] flex items-center justify-center text-white shadow-2xs shrink-0">
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded ${selectedInstrument === 'SENSEX' ? 'bg-purple-600' : 'bg-[#ff5722]'} flex items-center justify-center text-white shadow-2xs shrink-0`}>
               <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
-                  {getTitle()} Backtest Report
+                  {getTitle()} {selectedInstrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'} Backtest
                 </h2>
                 <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-[#e6f4ea] text-[#00a86b] uppercase">
                   v2 • Confluence
                 </span>
               </div>
               <p className="hidden sm:block text-[11px] text-slate-500 truncate">
-                Real 5-Min Candles (Up to 60 Days / 4,500+ Candles) • VWAP + 9 EMA + Body Filter
+                Real 5-Min Candles (Up to 60 Days / 4,500+ Candles) • VWAP + 9 EMA + Body Filter • 1 Lot ({lotQty} Qty)
               </p>
             </div>
           </div>
 
-          <button
-            onClick={loadRealBacktestData}
-            disabled={isLoading}
-            title="Recalculate Backtest"
-            className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 hover:border-[#387ed1] hover:text-[#387ed1] text-slate-700 bg-white text-xs font-medium transition cursor-pointer shrink-0"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Recalculate</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            {/* Instrument Switcher inside Backtest Modal */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => handleInstrumentSwitch('NIFTY')}
+                className={`px-2 py-1 text-[10px] sm:text-xs font-black rounded transition cursor-pointer ${
+                  selectedInstrument === 'NIFTY'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                NIFTY 50
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInstrumentSwitch('SENSEX')}
+                className={`px-2 py-1 text-[10px] sm:text-xs font-black rounded transition cursor-pointer ${
+                  selectedInstrument === 'SENSEX'
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                SENSEX
+              </button>
+            </div>
+
+            <button
+              onClick={() => loadRealBacktestData(selectedInstrument)}
+              disabled={isLoading}
+              title="Recalculate Backtest"
+              className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 hover:border-[#387ed1] hover:text-[#387ed1] text-slate-700 bg-white text-xs font-medium transition cursor-pointer shrink-0"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Recalculate</span>
+            </button>
+          </div>
         </div>
 
         {/* Quick Date Range & Custom Filter Bar */}
@@ -162,7 +203,7 @@ export default function BacktestModal({
                     onClick={() => {
                       setDatePreset(p.id);
                       setShowCustomPicker(false);
-                      applyFilter(p.id);
+                      applyFilter(p.id, startDate, endDate, allSessionsData, selectedInstrument);
                     }}
                     className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${
                       datePreset === p.id && !showCustomPicker
@@ -193,7 +234,7 @@ export default function BacktestModal({
 
               {/* Feed note */}
               <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
-                Exchange Feed Limit: Last 60 Days
+                Exchange Feed Limit: Last 60 Days ({selectedInstrument})
               </span>
 
             </div>
@@ -210,7 +251,7 @@ export default function BacktestModal({
                     max={allSessionsData[allSessionsData.length - 1]?.date}
                     onChange={(e) => {
                       setStartDate(e.target.value);
-                      applyFilter('custom', e.target.value, endDate);
+                      applyFilter('custom', e.target.value, endDate, allSessionsData, selectedInstrument);
                     }}
                     className="px-1.5 py-0.5 rounded border border-slate-200 bg-white text-slate-700 text-xs font-mono"
                   />
@@ -225,7 +266,7 @@ export default function BacktestModal({
                     max={allSessionsData[allSessionsData.length - 1]?.date}
                     onChange={(e) => {
                       setEndDate(e.target.value);
-                      applyFilter('custom', startDate, e.target.value);
+                      applyFilter('custom', startDate, e.target.value, allSessionsData, selectedInstrument);
                     }}
                     className="px-1.5 py-0.5 rounded border border-slate-200 bg-white text-slate-700 text-xs font-mono"
                   />
@@ -244,7 +285,7 @@ export default function BacktestModal({
           <div className="py-16 text-center flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-3" />
             <h3 className="text-sm font-bold text-slate-800">
-              Fetching 4,500+ Real 5-Minute Candles (Up to 60 Days)...
+              Fetching 4,500+ Real 5-Minute Candles for {selectedInstrument}...
             </h3>
             <p className="text-xs text-slate-400 mt-1">
               Calculating 7-Layer Confluence across all historical trading sessions
@@ -260,7 +301,7 @@ export default function BacktestModal({
               <span>{error}</span>
             </div>
             <button
-              onClick={loadRealBacktestData}
+              onClick={() => loadRealBacktestData(selectedInstrument)}
               className="px-3 py-1 rounded bg-rose-600 text-white font-bold text-xs"
             >
               Retry
@@ -308,11 +349,11 @@ export default function BacktestModal({
               {/* Stat 3: Net Profit */}
               <div className="px-2 sm:px-3 py-1 flex flex-col justify-center">
                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
-                  Net P&L (1 Lot)
+                  Net P&L (1 Lot • {lotQty} Qty)
                 </span>
                 <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
                   <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-[#387ed1] whitespace-nowrap">
-                    +₹{backtestResult.netPnl.toLocaleString('en-IN')}
+                    {backtestResult.netPnl >= 0 ? '+' : ''}₹{backtestResult.netPnl.toLocaleString('en-IN')}
                   </span>
                   <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium whitespace-nowrap">
                     PF: {backtestResult.profitFactor}
@@ -341,7 +382,7 @@ export default function BacktestModal({
             <div className="flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-1 sm:mb-1.5 shrink-0">
                 <h3 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wide">
-                  Historical Day Trades (Last 30 Days)
+                  Historical Day Trades ({getTitle()}) • {selectedInstrument}
                 </h3>
                 <span className="text-[10px] sm:text-[11px] text-slate-400">
                   Click <strong>"Replay Day"</strong> for chart
@@ -357,16 +398,16 @@ export default function BacktestModal({
                       <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">SPOT</th>
                       <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">ENTRY</th>
                       <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">EXIT</th>
-                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">P&L (1 LOT)</th>
+                      <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">P&L ({lotQty} QTY)</th>
                       <th className="py-2 px-2.5 sm:py-2.5 sm:px-3">OUTCOME</th>
                       <th className="py-2 px-2.5 sm:py-2.5 sm:px-3 text-right">ACTION</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-mono">
-                    {backtestResult.trades.map((trade) => {
+                    {backtestResult.trades.map((trade, idx) => {
                       const isProfit = trade.pnl > 0;
                       return (
-                        <tr key={trade.id} className="hover:bg-blue-50/40 transition">
+                        <tr key={trade.id || `${trade.date}-${trade.time}-${idx}`} className="hover:bg-blue-50/40 transition">
                           <td className="py-2 px-3 text-slate-600 font-sans">
                             <span className="font-semibold block">{trade.date}</span>
                             <span className="text-[10px] text-slate-400">{trade.time}</span>

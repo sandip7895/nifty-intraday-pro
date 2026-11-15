@@ -9,20 +9,25 @@ export default function SignalCard({
   const isBuyPe = activeSignal.action === 'BUY_PE';
   const isWait = activeSignal.action === 'WAIT';
 
-  const spotEntry = activeSignal.spotTrigger || 25189.10;
+  const isSensex = activeSignal.instrument === 'SENSEX' || (activeSignal.strikeName && activeSignal.strikeName.includes('SENSEX'));
+  const qty = activeSignal.lotSize || (isSensex ? 20 : 65);
+  const spotEntry = activeSignal.spotTrigger || (isSensex ? 81592.45 : 25189.10);
   const isCe = isBuyCe || !isBuyPe;
 
-  // Logical spot SL & targets aligned with trade direction
-  const spotSl = isCe ? Number((spotEntry - 35).toFixed(0)) : Number((spotEntry + 35).toFixed(0));
-  const spotTarget1 = isCe ? Number((spotEntry + 50).toFixed(0)) : Number((spotEntry - 50).toFixed(0));
-  const spotTarget2 = isCe ? Number((spotEntry + 90).toFixed(0)) : Number((spotEntry - 90).toFixed(0));
+  // Logical spot SL & targets aligned with trade direction and index scale
+  const slPts = isSensex ? 100 : 35;
+  const t1Pts = isSensex ? 150 : 50;
+  const t2Pts = isSensex ? 270 : 90;
 
-  // Calculations for 1 Lot (65 Qty)
-  const qty = 65;
-  const entryPrice = activeSignal.optionEntry || 130;
-  const target1Price = activeSignal.optionTarget1 || 158.6;
-  const target2Price = activeSignal.optionTarget2 || 182;
-  const slPrice = activeSignal.optionSl || 110.5;
+  const spotSl = isCe ? Number((spotEntry - slPts).toFixed(0)) : Number((spotEntry + slPts).toFixed(0));
+  const spotTarget1 = isCe ? Number((spotEntry + t1Pts).toFixed(0)) : Number((spotEntry - t1Pts).toFixed(0));
+  const spotTarget2 = isCe ? Number((spotEntry + t2Pts).toFixed(0)) : Number((spotEntry - t2Pts).toFixed(0));
+
+  // Option Calculations
+  const entryPrice = activeSignal.optionEntry || (isSensex ? 340 : 130);
+  const target1Price = activeSignal.optionTarget1 || (isSensex ? 414.8 : 158.6);
+  const target2Price = activeSignal.optionTarget2 || (isSensex ? 476.0 : 182.0);
+  const slPrice = activeSignal.optionSl || (isSensex ? 289.0 : 110.5);
 
   const marginRequired = Math.round(entryPrice * qty);
   const target1Gain = Math.round((target1Price - entryPrice) * qty);
@@ -42,7 +47,7 @@ export default function SignalCard({
               </h2>
               {!isWait && (
                 <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
-                  MIS • 65 QTY
+                  MIS • {qty} QTY
                 </span>
               )}
             </div>
@@ -92,7 +97,7 @@ export default function SignalCard({
 
       {isWait ? (
         <div className="py-12 text-center text-slate-400 text-xs">
-          Scanning 5-minute candles for VWAP & 9 EMA high-probability confluence...
+          Scanning {isSensex ? 'BSE SENSEX' : 'NIFTY 50'} 5-minute candles for VWAP & 9 EMA high-probability confluence...
         </div>
       ) : (
         <div className="my-2 space-y-2 flex-1 flex flex-col justify-around">
@@ -188,7 +193,7 @@ export default function SignalCard({
                 }`}
             >
               <Zap className="w-4 h-4 fill-current" />
-              <span>{isBuyCe ? 'BUY CALL (CE)' : 'BUY PUT (PE)'} • 1 LOT (65 QTY)</span>
+              <span>{isBuyCe ? 'BUY CALL (CE)' : 'BUY PUT (PE)'} • 1 LOT ({qty} QTY)</span>
             </button>
 
             {/* Order Margin Details */}
