@@ -13,7 +13,7 @@ export default function PaperTradeManager({
   const winRate = closedTrades.length > 0 ? Math.round((winCount / closedTrades.length) * 100) : 0;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-md p-2.5 sm:p-3 shadow-2xs flex flex-col h-[180px] shrink-0 w-full font-sans">
+    <div className="bg-white border border-slate-200/90 rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col h-[180px] shrink-0 w-full font-sans">
       
       {/* Kite Style Header: Underline Tabs & Live P&L */}
       <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 shrink-0">

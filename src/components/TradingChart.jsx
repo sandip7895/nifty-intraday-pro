@@ -382,7 +382,7 @@ export default function TradingChart({
   ]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-md overflow-hidden shadow-2xs flex flex-col h-full w-full relative">
+    <div className="bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-xs flex flex-col h-full w-full relative">
 
       {/* Zerodha Kite Style Chart Header */}
       <div className="flex flex-wrap items-center justify-between px-3 py-1.5 border-b border-slate-200 bg-white shrink-0 gap-2">

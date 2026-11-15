@@ -30,30 +30,30 @@ export default function SignalCard({
   const slRisk = Math.round((entryPrice - slPrice) * qty);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-md p-2.5 sm:p-3.5 shadow-2xs flex flex-col justify-between h-full w-full max-w-full overflow-hidden font-sans">
+    <div className="bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between h-full w-full max-w-full overflow-hidden font-sans">
 
-      {/* Zerodha Kite Header: Instrument & Live Price */}
+      {/* Sahi / Kite Header: Instrument & Live Price */}
       <div className="pb-2.5 border-b border-slate-100 shrink-0">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
                 {isWait ? 'Awaiting Confluence Setup' : activeSignal.strikeName}
               </h2>
               {!isWait && (
-                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
-                  MIS • 65 QTY (1 LOT)
+                <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
+                  MIS • 65 QTY
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-2 mt-1">
               {!isWait && (
-                <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded ${isBuyCe
-                  ? 'text-[#00a86b] bg-[#e6f4ea] border border-[#ceead6]'
-                  : 'text-[#ff5722] bg-[#fbe9e7] border border-[#ffccbc]'
+                <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full ${isBuyCe
+                  ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/80'
+                  : 'text-rose-700 bg-rose-50 border border-rose-200/80'
                   }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isBuyCe ? 'bg-[#00a86b]' : 'bg-[#ff5722]'} animate-pulse`}></span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isBuyCe ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`}></span>
                   {isBuyCe ? 'BULLISH CALL (CE)' : 'BEARISH PUT (PE)'}
                 </span>
               )}
@@ -66,22 +66,22 @@ export default function SignalCard({
           {!isWait && (
             <div className="text-right">
               <div className="flex items-baseline justify-end gap-1">
-                <span className="text-base sm:text-lg font-bold font-mono text-slate-900">
+                <span className="text-base sm:text-lg font-black font-mono text-slate-900">
                   ₹{entryPrice.toFixed(1)}
                 </span>
-                <span className="text-[10px] text-slate-400 font-medium uppercase">LTP</span>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">LTP</span>
               </div>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
                 {activeSignal.result ? (
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${activeSignal.status === 'TARGET_HIT'
-                    ? 'bg-[#e6f4ea] text-[#00a86b]'
-                    : 'bg-[#fbe9e7] text-[#df514c]'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-rose-100 text-rose-800'
                     }`}>
                     {activeSignal.status === 'TARGET_HIT' ? 'Target Achieved' : 'SL Hit'}
                   </span>
                 ) : (
                   <span className="text-[10px] font-semibold text-slate-500">
-                    Confidence: <strong className="text-[#00a86b] font-mono">{activeSignal.accuracy}%</strong>
+                    Confidence: <strong className="text-emerald-600 font-mono">{activeSignal.accuracy}%</strong>
                   </span>
                 )}
               </div>
@@ -178,25 +178,26 @@ export default function SignalCard({
             </span>
           </div>
 
-          {/* Zerodha Kite Action Button & Margin Row */}
-          <div className="space-y-1.5 pt-0.5">
+          {/* Action Button & Margin Row */}
+          <div className="space-y-2 pt-1">
             <button
               onClick={() => onExecutePaperTrade(activeSignal)}
-              className={`w-full py-2.5 px-4 rounded font-bold text-xs uppercase tracking-wider transition active:scale-[0.99] text-white shadow-2xs flex items-center justify-center gap-2 cursor-pointer ${isBuyCe
-                ? 'bg-[#387ed1] hover:bg-[#2b6cb0]'
-                : 'bg-[#ff5722] hover:bg-[#e64a19]'
+              className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition active:scale-[0.98] text-white shadow-sm flex items-center justify-center gap-2 cursor-pointer ${isBuyCe
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+                : 'bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700'
                 }`}
             >
-              <span>{isBuyCe ? 'BUY CALL' : 'BUY PUT'} • 1 LOT (65 QTY)</span>
+              <Zap className="w-4 h-4 fill-current" />
+              <span>{isBuyCe ? 'BUY CALL (CE)' : 'BUY PUT (PE)'} • 1 LOT (65 QTY)</span>
             </button>
 
-            {/* Kite Order Margin Details */}
-            <div className="flex items-center justify-between text-[11px] text-slate-500 px-0.5">
+            {/* Order Margin Details */}
+            <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
               <span>
-                Margin req: <strong className="text-slate-800 font-mono font-medium">₹{marginRequired.toLocaleString('en-IN')}</strong>
+                Margin Req: <strong className="text-slate-800 font-mono font-bold">₹{marginRequired.toLocaleString('en-IN')}</strong>
               </span>
               <span>
-                Risk:Reward <strong className="text-slate-800 font-mono font-medium">1:2.0</strong>
+                Risk : Reward <strong className="text-emerald-600 font-mono font-bold">1:2.0</strong>
               </span>
             </div>
           </div>
