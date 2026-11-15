@@ -2,16 +2,18 @@ export default async function handler(req, res) {
   try {
     const urlObj = new URL(req.url, 'http://localhost');
     let subPath = urlObj.searchParams.get('path') || '';
+    urlObj.searchParams.delete('path');
 
     if (!subPath) {
-      subPath = req.url.replace(/^\/(api\/yahoo|yahoo-api)/, '');
+      subPath = req.url.replace(/^\/(api\/yahoo|yahoo-api)/, '').split('?')[0];
     }
 
     if (!subPath.startsWith('/')) {
       subPath = '/' + subPath;
     }
 
-    const targetUrl = `https://query1.finance.yahoo.com${subPath}`;
+    const queryStr = urlObj.searchParams.toString();
+    const targetUrl = `https://query1.finance.yahoo.com${subPath}${queryStr ? '?' + queryStr : ''}`;
 
     const response = await fetch(targetUrl, {
       headers: {
