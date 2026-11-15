@@ -28,7 +28,7 @@ export default function BacktestModal({
   const [backtestResult, setBacktestResult] = useState(null);
   const [sessionsData, setSessionsData] = useState([]);
   const [allSessionsData, setAllSessionsData] = useState([]);
-  const [datePreset, setDatePreset] = useState('60d'); // '60d' is now DEFAULT
+  const [datePreset, setDatePreset] = useState('30d'); // '30d' is now DEFAULT
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showCustomPicker, setShowCustomPicker] = useState(false);
@@ -193,8 +193,8 @@ export default function BacktestModal({
                   Range:
                 </span>
                 {[
-                  { id: '60d', label: '60D (Default)' },
-                  { id: '30d', label: '30D' },
+                  { id: '30d', label: '30D (Default)' },
+                  { id: '60d', label: '60D' },
                   { id: '15d', label: '15D' },
                   { id: '7d', label: '7D' }
                 ].map((p) => (
