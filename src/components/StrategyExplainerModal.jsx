@@ -63,50 +63,50 @@ export default function StrategyExplainerModal({ isOpen, onClose }) {
             <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
               <div className="font-bold text-slate-100 flex items-center gap-2">
                 <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px]">3</span>
-                9 & 21 EMA Dynamic Momentum
+                9 & 21 EMA Dynamic Trend Crossover
               </div>
               <p className="text-slate-400 mt-1 pl-7">
-                Ensures moving average alignment and trend direction confirmation before any entry.
+                9 EMA &gt; 21 EMA for Call (CE) and 9 EMA &lt; 21 EMA for Put (PE) ensures trading in the dominant flow.
               </p>
             </div>
 
             <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
               <div className="font-bold text-slate-100 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">4</span>
-                Option Chain PCR (Put-Call Ratio)
+                <span className="w-5 h-5 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center text-[10px]">4</span>
+                Supertrend (10, 3) Trend Confirmation
               </div>
               <p className="text-slate-400 mt-1 pl-7">
-                Monitors institutional option writing support and resistance levels.
+                Green Supertrend for Call setups and Red Supertrend for Put setups guarantees institutional trend alignment.
               </p>
             </div>
 
             <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
               <div className="font-bold text-slate-100 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px]">5</span>
-                Heavyweight Stock Alignment
+                <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-[10px]">5</span>
+                RSI Momentum Window (55 - 70 for CE / 30 - 45 for PE)
               </div>
               <p className="text-slate-400 mt-1 pl-7">
-                Ensures HDFC Bank and Reliance Industries are moving in the direction of the setup.
+                Prevents buying in overbought traps and selling at exhaustion bottoms, ensuring momentum velocity.
               </p>
             </div>
 
             <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
               <div className="font-bold text-slate-100 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-[10px]">6</span>
-                RSI Momentum Window (55 - 70)
+                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">6</span>
+                ADX (14) &gt; 20 Sideways Filter
               </div>
               <p className="text-slate-400 mt-1 pl-7">
-                Prevents buying in overbought traps and ensures strong price velocity.
+                Blocks false signals during rangebound sideways chop zones, filtering out over 40% of fakeouts.
               </p>
             </div>
 
             <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
               <div className="font-bold text-slate-100 flex items-center gap-2">
-                <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-[10px]">7</span>
-                India VIX Volatility Sweet Spot
+                <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px]">7</span>
+                Intraday Timing Filter & Futures Volume
               </div>
               <p className="text-slate-400 mt-1 pl-7">
-                Monitors market volatility for fast option expansion and swift target achievement.
+                Avoids 09:15-09:45 morning whipsaws, skips 11:30-01:15 lunch chop, and stops new trades after 02:30 PM theta decay.
               </p>
             </div>
           </div>

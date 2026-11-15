@@ -156,23 +156,27 @@ export default function SignalCard({
 
           </div>
 
-          {/* Confluence Checkpoints - Clean Kite Tags */}
-          <div className="py-1 px-2 rounded bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-600">
+          {/* Confluence Checkpoints - Multi-Indicator High-Accuracy Confirmation */}
+          <div className="py-1 px-2 rounded bg-slate-50 border border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10.5px] text-slate-600">
             <span className="flex items-center gap-1 font-medium">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
               <span>VWAP Direction</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
-              <span>9 EMA Trend</span>
+              <span>9/21 EMA Trend</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
-              <span>Conviction Body</span>
+              <span>Supertrend (10,3)</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
-              <span>CPR Breakout</span>
+              <span>RSI Zone</span>
+            </span>
+            <span className="flex items-center gap-1 font-medium col-span-2 sm:col-span-1">
+              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <span>ADX &gt; 20 Filter</span>
             </span>
           </div>
 

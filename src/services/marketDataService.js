@@ -1,4 +1,9 @@
 // Unified Real Market Data & High-Accuracy Strategy Engine for NIFTY 50
+import {
+  calculateSupertrend,
+  calculateADXSeries,
+  calculateRSISeries
+} from '../data/tradingLogic';
 
 // Helper to parse candles from Yahoo Finance
 export function parseYahooCandles(result) {
@@ -73,8 +78,12 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
     ema21Arr.push(e21);
   }
 
+  // Calculate Supertrend (10, 3), ADX (14) & Rolling RSI (14)
+  const stSeries = calculateSupertrend(currentDayCandles, 10, 3);
+  const adxSeries = calculateADXSeries(currentDayCandles, 14);
+  const rsiSeries = calculateRSISeries(closes, 14);
+
   // Scan for the day's high-conviction trade trigger
-  // Morning Window: 09:45 AM to 12:30 PM
   let triggeredTrade = null;
 
   for (let i = 5; i < currentDayCandles.length; i++) {
@@ -82,6 +91,10 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
     const prevC = currentDayCandles[i - 1];
     const vwap = vwapArr[i];
     const ema9 = ema9Arr[i];
+    const ema21 = ema21Arr[i];
+    const rsi = rsiSeries[i] || 50;
+    const adx = adxSeries[i]?.adx || 20;
+    const stTrend = stSeries[i]?.trend; // 1 = Bullish (Green), -1 = Bearish (Red)
     const date = new Date(c.time * 1000);
     const totalMinutes = date.getHours() * 60 + date.getMinutes();
 
@@ -97,14 +110,22 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
       const isStrongBody = (candleBody / candleRange) >= 0.45; // Eliminates indecisive doji/wick traps
 
       // 1. Bearish Breakdown (PUT):
-      // Price breaks below VWAP + below 9 EMA + strong red body + below CPR Bottom (or breakdown)
+      // - Price breaks below VWAP + below 9 EMA
+      // - Strong red body
+      // - CPR breakdown OR below VWAP
+      // - ADX >= 18 (avoid chop traps)
+      // - RSI in healthy selling zone (RSI <= 55)
       const isBearishBreak = c.close < vwap && c.close < ema9 && c.close < c.open && isStrongBody &&
-        (c.close < cprBottom || prevC.close >= vwap);
+        (c.close < cprBottom || prevC.close >= vwap) && adx >= 18 && rsi <= 55;
       
       // 2. Bullish Breakout (CALL):
-      // Price breaks above VWAP + above 9 EMA + strong green body + above CPR Top (or breakout)
+      // - Price breaks above VWAP + above 9 EMA
+      // - Strong green body
+      // - CPR breakout OR above VWAP
+      // - ADX >= 18 (avoid chop traps)
+      // - RSI in healthy momentum zone (RSI >= 45)
       const isBullishBreak = c.close > vwap && c.close > ema9 && c.close > c.open && isStrongBody &&
-        (c.close > cprTop || prevC.close <= vwap);
+        (c.close > cprTop || prevC.close <= vwap) && adx >= 18 && rsi >= 45;
 
       if (isBearishBreak) {
         const atmStrike = Math.round(c.close / 50) * 50;
@@ -126,7 +147,11 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
           time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
           rawDate: date.toLocaleDateString('en-CA'),
           date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-          status: 'OPEN'
+          status: 'OPEN',
+          rsi: Number(rsi.toFixed(1)),
+          adx: Number(adx.toFixed(1)),
+          supertrend: stTrend === 1 ? 'BULLISH' : 'BEARISH',
+          emaTrend: ema9 > ema21 ? '9 EMA > 21 EMA' : '9 EMA < 21 EMA'
         };
         break; // Lock day's primary setup
       } else if (isBullishBreak) {
@@ -149,7 +174,11 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels) {
           time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
           rawDate: date.toLocaleDateString('en-CA'),
           date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-          status: 'OPEN'
+          status: 'OPEN',
+          rsi: Number(rsi.toFixed(1)),
+          adx: Number(adx.toFixed(1)),
+          supertrend: stTrend === 1 ? 'BULLISH' : 'BEARISH',
+          emaTrend: ema9 > ema21 ? '9 EMA > 21 EMA' : '9 EMA < 21 EMA'
         };
         break;
       }

@@ -93,6 +93,176 @@ export function calculateRSI(closes, period = 14) {
   return Number((100 - (100 / (1 + rs))).toFixed(2));
 }
 
+// Full 14-period Rolling RSI series for each candle
+export function calculateRSISeries(closes, period = 14) {
+  const rsi = [];
+  if (closes.length <= period) return closes.map(() => 50);
+
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff;
+    else losses += Math.abs(diff);
+  }
+  let avgGain = gains / period;
+  let avgLoss = losses / period;
+
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period) {
+      rsi.push(50);
+      continue;
+    }
+    if (i > period) {
+      const diff = closes[i] - closes[i - 1];
+      if (diff >= 0) {
+        avgGain = (avgGain * (period - 1) + diff) / period;
+        avgLoss = (avgLoss * (period - 1)) / period;
+      } else {
+        avgGain = (avgGain * (period - 1)) / period;
+        avgLoss = (avgLoss * (period - 1) + Math.abs(diff)) / period;
+      }
+    }
+    if (avgLoss === 0) rsi.push(100);
+    else {
+      const rs = avgGain / avgLoss;
+      rsi.push(Number((100 - (100 / (1 + rs))).toFixed(2)));
+    }
+  }
+  return rsi;
+}
+
+// Supertrend Indicator (Period 10, Multiplier 3)
+export function calculateSupertrend(candles, period = 10, multiplier = 3) {
+  const st = [];
+  if (!candles || candles.length === 0) return st;
+
+  const tr = [candles[0].high - candles[0].low];
+  for (let i = 1; i < candles.length; i++) {
+    const hl = candles[i].high - candles[i].low;
+    const hpc = Math.abs(candles[i].high - candles[i - 1].close);
+    const lpc = Math.abs(candles[i].low - candles[i - 1].close);
+    tr.push(Math.max(hl, hpc, lpc));
+  }
+
+  let atr = 0;
+  for (let i = 0; i < Math.min(period, tr.length); i++) atr += tr[i];
+  atr /= Math.min(period, tr.length);
+
+  let prevUpper = 0;
+  let prevLower = 0;
+  let prevTrend = 1; // 1 = Bullish (Green), -1 = Bearish (Red)
+
+  for (let i = 0; i < candles.length; i++) {
+    if (i >= period) {
+      atr = (atr * (period - 1) + tr[i]) / period;
+    }
+    const c = candles[i];
+    const hl2 = (c.high + c.low) / 2;
+    const basicUpper = hl2 + multiplier * atr;
+    const basicLower = hl2 - multiplier * atr;
+
+    let finalUpper = basicUpper;
+    let finalLower = basicLower;
+
+    if (i > 0) {
+      const prevClose = candles[i - 1].close;
+      finalUpper = (basicUpper < prevUpper || prevClose > prevUpper) ? basicUpper : prevUpper;
+      finalLower = (basicLower > prevLower || prevClose < prevLower) ? basicLower : prevLower;
+    }
+
+    let trend = prevTrend;
+    if (i > 0) {
+      if (prevTrend === -1 && c.close > prevUpper) {
+        trend = 1;
+      } else if (prevTrend === 1 && c.close < prevLower) {
+        trend = -1;
+      }
+    } else {
+      trend = c.close >= hl2 ? 1 : -1;
+    }
+
+    st.push({
+      time: c.time,
+      trend, // 1: Bullish Green, -1: Bearish Red
+      value: Number((trend === 1 ? finalLower : finalUpper).toFixed(2))
+    });
+
+    prevUpper = finalUpper;
+    prevLower = finalLower;
+    prevTrend = trend;
+  }
+  return st;
+}
+
+// ADX Indicator (14 period) with +DI, -DI and DX
+export function calculateADXSeries(candles, period = 14) {
+  const adxArr = [];
+  if (!candles || candles.length < period) return (candles || []).map(c => ({ time: c.time, adx: 20 }));
+
+  const tr = [];
+  const plusDM = [];
+  const minusDM = [];
+
+  for (let i = 0; i < candles.length; i++) {
+    if (i === 0) {
+      tr.push(candles[0].high - candles[0].low);
+      plusDM.push(0);
+      minusDM.push(0);
+      continue;
+    }
+    const cur = candles[i];
+    const prev = candles[i - 1];
+
+    const hl = cur.high - cur.low;
+    const hpc = Math.abs(cur.high - prev.close);
+    const lpc = Math.abs(cur.low - prev.close);
+    tr.push(Math.max(hl, hpc, lpc));
+
+    const upMove = cur.high - prev.high;
+    const downMove = prev.low - cur.low;
+
+    plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+    minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+  }
+
+  let smoothTR = 0, smoothPlusDM = 0, smoothMinusDM = 0;
+  for (let i = 0; i < period; i++) {
+    smoothTR += tr[i];
+    smoothPlusDM += plusDM[i];
+    smoothMinusDM += minusDM[i];
+  }
+
+  const dxList = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period) {
+      adxArr.push({ time: candles[i].time, adx: 20 });
+      continue;
+    }
+    smoothTR = smoothTR - (smoothTR / period) + tr[i];
+    smoothPlusDM = smoothPlusDM - (smoothPlusDM / period) + plusDM[i];
+    smoothMinusDM = smoothMinusDM - (smoothMinusDM / period) + minusDM[i];
+
+    const plusDI = smoothTR > 0 ? (smoothPlusDM / smoothTR) * 100 : 0;
+    const minusDI = smoothTR > 0 ? (smoothMinusDM / smoothTR) * 100 : 0;
+    const diSum = plusDI + minusDI;
+    const dx = diSum > 0 ? (Math.abs(plusDI - minusDI) / diSum) * 100 : 0;
+    dxList.push(dx);
+
+    if (dxList.length < period) {
+      adxArr.push({ time: candles[i].time, adx: Number(dx.toFixed(2)) });
+    } else if (dxList.length === period) {
+      let sum = 0;
+      for (let k = 0; k < period; k++) sum += dxList[k];
+      adxArr.push({ time: candles[i].time, adx: Number((sum / period).toFixed(2)) });
+    } else {
+      const prevADX = adxArr[adxArr.length - 1].adx;
+      const curADX = (prevADX * (period - 1) + dx) / period;
+      adxArr.push({ time: candles[i].time, adx: Number(curADX.toFixed(2)) });
+    }
+  }
+  return adxArr;
+}
+
 // 7-Layer Confluence Evaluator for High Accuracy Nifty 50 Trades
 export function evaluateConfluence({
   currentPrice,
