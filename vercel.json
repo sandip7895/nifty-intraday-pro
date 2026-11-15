@@ -1,5 +1,6 @@
 {
   "framework": "vite",
+  "regions": ["bom1"],
   "rewrites": [
     {
       "source": "/yahoo-api/(.*)",
