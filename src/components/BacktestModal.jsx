@@ -55,19 +55,19 @@ export default function BacktestModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-xl sm:rounded-2xl shadow-2xl p-2.5 sm:p-5 max-h-[96vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3.5 sm:p-6 overflow-hidden">
+      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 sm:p-5 max-h-[82dvh] sm:max-h-[86vh] flex flex-col overflow-hidden my-auto">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer z-10"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer z-10"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Header - Sleek & Ultra-Compact for Mobile */}
-        <div className="flex items-center justify-between gap-2 mb-2 pr-7 sm:pr-8 shrink-0">
+        <div className="flex items-center justify-between gap-2 mb-2 pr-9 sm:pr-10 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#ff5722] flex items-center justify-center text-white shadow-2xs shrink-0">
               <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
