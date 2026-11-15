@@ -53,14 +53,15 @@ class SignalBadgesPrimitive {
               const bx = Math.round(x * hRatio);
               const by = Math.round(y * vRatio);
 
-              const fontSize = Math.round(11 * hRatio);
+              const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 640;
+              const fontSize = Math.round((isMobileScreen ? 9.5 : 11) * hRatio);
               ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
               const textMetrics = ctx.measureText(sig.text);
               const textWidth = textMetrics.width;
 
-              const padX = 8 * hRatio;
+              const padX = (isMobileScreen ? 6 : 8) * hRatio;
               const boxWidth = Math.round(textWidth + padX * 2);
-              const boxHeight = Math.round(22 * vRatio);
+              const boxHeight = Math.round((isMobileScreen ? 19 : 22) * vRatio);
               const radius = Math.round(4 * hRatio);
 
               const isAbove = sig.isAbove !== false;
@@ -172,8 +173,8 @@ export default function TradingChart({
       rightPriceScale: {
         borderColor: '#cbd5e1',
         scaleMargins: {
-          top: 0.08,
-          bottom: 0.08
+          top: 0.14,
+          bottom: 0.14
         }
       },
       timeScale: {
@@ -238,6 +239,8 @@ export default function TradingChart({
         const spotTarget1 = isCe ? Number((spotEntry + 50).toFixed(2)) : Number((spotEntry - 50).toFixed(2));
         const spotTarget2 = isCe ? Number((spotEntry + 90).toFixed(2)) : Number((spotEntry - 90).toFixed(2));
 
+        const isMobileScreen = (container.clientWidth || window.innerWidth) < 640;
+
         // 1. Entry Line (Blue Solid)
         candleSeries.createPriceLine({
           price: spotEntry,
@@ -245,7 +248,7 @@ export default function TradingChart({
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: `BUY ENTRY @ ₹${spotEntry}`
+          title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${spotEntry}`
         });
 
         // 2. Target 1 Line (Green Dashed)
@@ -255,7 +258,7 @@ export default function TradingChart({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `TARGET 1: ₹${spotTarget1} (BOOK 50%)`
+          title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${spotTarget1} (BOOK 50%)`
         });
 
         // 3. Target 2 Line (Emerald Dashed)
@@ -265,7 +268,7 @@ export default function TradingChart({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `TARGET 2: ₹${spotTarget2} (MAX PROFIT)`
+          title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${spotTarget2} (MAX PROFIT)`
         });
 
         // 4. Stop Loss Line (Red Dashed)
@@ -275,7 +278,7 @@ export default function TradingChart({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: `🛑 STOP LOSS: ₹${spotSl} (EXIT)`
+          title: isMobileScreen ? 'SL' : `🛑 STOP LOSS: ₹${spotSl} (EXIT)`
         });
 
         // Determine exact Entry candle index
@@ -303,10 +306,10 @@ export default function TradingChart({
           badges.push({
             time: entryCandle.time,
             price: isCe ? entryCandle.low : entryCandle.high,
-            isAbove: !isCe,
-            text: isCe
-              ? `BUY CALL ENTRY @ ₹${spotEntry}`
-              : `BUY PUT ENTRY @ ₹${spotEntry}`,
+            isAbove: !isCe, // For CE, placed below pointing up; for PE, placed above pointing down
+            text: isMobileScreen
+              ? (isCe ? '▲ BUY CALL' : '▼ BUY PUT')
+              : (isCe ? `BUY CALL ENTRY @ ₹${spotEntry}` : `BUY PUT ENTRY @ ₹${spotEntry}`),
             bgColor: isCe ? '#16a34a' : '#dc2626'
           });
         }
@@ -325,11 +328,11 @@ export default function TradingChart({
 
           badges.push({
             time: exitCandle.time,
-            price: isTargetHit ? exitCandle.low : exitCandle.high,
-            isAbove: !isTargetHit,
-            text: isTargetHit
-              ? `TARGET 1 HIT (${pnlText})`
-              : `STOP LOSS HIT (${pnlText})`,
+            price: isCe ? exitCandle.high : exitCandle.low,
+            isAbove: isCe, // Placed on opposite side of entry so they NEVER overlap!
+            text: isMobileScreen
+              ? (isTargetHit ? `🎯 TGT HIT` : `🛑 SL HIT`)
+              : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`),
             bgColor: isTargetHit ? '#16a34a' : '#dc2626'
           });
         }
