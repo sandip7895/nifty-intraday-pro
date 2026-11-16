@@ -127,8 +127,19 @@ export default function TradingChart({
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
 
+  const [chartMode, setChartMode] = useState('SPOT'); // 'SPOT' | 'OPTION'
   const [activeTimeframe, setActiveTimeframe] = useState('5m');
   const [showVWAP, setShowVWAP] = useState(true);
+
+  const isSensex = instrument === 'SENSEX' || activeSignal?.instrument === 'SENSEX';
+  const isCe = activeSignal ? activeSignal.action === 'BUY_CE' || !activeSignal.action?.includes('PE') : true;
+  const dynamicStrikeName = activeSignal?.strikeName || (isSensex ? 'SENSEX 82000 CE' : 'NIFTY 25250 CE');
+  const delta = isSensex ? 0.50 : 0.52;
+  const spotEntry = activeSignal?.spotTrigger || (candles && candles[3]?.close) || currentPrice;
+  const baseEntryPrice = activeSignal?.optionEntry || (isSensex ? 323.2 : 125.8);
+  const target1Price = activeSignal?.optionTarget1 || Number((baseEntryPrice * 1.25).toFixed(1));
+  const target2Price = activeSignal?.optionTarget2 || Number((baseEntryPrice * 1.45).toFixed(1));
+  const slPrice = activeSignal?.optionSl || Number((baseEntryPrice * 0.86).toFixed(1));
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -238,13 +249,36 @@ export default function TradingChart({
     });
 
     if (candles && candles.length > 0) {
-      const formattedCandles = candles.map(c => ({
-        time: c.time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close
-      }));
+      let formattedCandles = [];
+
+      if (chartMode === 'OPTION') {
+        formattedCandles = candles.map(c => {
+          const openDelta = isCe ? (c.open - spotEntry) : (spotEntry - c.open);
+          const highDelta = isCe ? (c.high - spotEntry) : (spotEntry - c.low);
+          const lowDelta = isCe ? (c.low - spotEntry) : (spotEntry - c.high);
+          const closeDelta = isCe ? (c.close - spotEntry) : (spotEntry - c.close);
+
+          const o = Number(Math.max(1, baseEntryPrice + openDelta * delta).toFixed(2));
+          const h = Number(Math.max(o, baseEntryPrice + highDelta * delta).toFixed(2));
+          const l = Number(Math.max(1, Math.min(o, baseEntryPrice + lowDelta * delta)).toFixed(2));
+          const cl = Number(Math.max(1, baseEntryPrice + closeDelta * delta).toFixed(2));
+          return {
+            time: c.time,
+            open: o,
+            high: Math.max(h, cl),
+            low: Math.min(l, cl),
+            close: cl
+          };
+        });
+      } else {
+        formattedCandles = candles.map(c => ({
+          time: c.time,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close
+        }));
+      }
 
       candleSeries.setData(formattedCandles);
 
@@ -252,9 +286,9 @@ export default function TradingChart({
       if (showVWAP) {
         let cumulativeTPV = 0;
         let cumulativeVol = 0;
-        const vwapData = candles.map(c => {
+        const vwapData = formattedCandles.map((c, idx) => {
           const tp = (c.high + c.low + c.close) / 3;
-          const vol = c.volume || 1000;
+          const vol = candles[idx]?.volume || 1000;
           cumulativeTPV += tp * vol;
           cumulativeVol += vol;
           return {
@@ -276,64 +310,62 @@ export default function TradingChart({
       // VISIBLE TRADE LINES (ENTRY, TARGET, SL)
       // ==========================================
       if (activeSignal && activeSignal.action !== 'WAIT') {
-        const isCe = activeSignal.action === 'BUY_CE';
-        const spotEntry = activeSignal.spotTrigger || (formattedCandles[3]?.close || currentPrice);
-        const isSensex = instrument === 'SENSEX' || activeSignal.instrument === 'SENSEX';
-        const delta = isSensex ? 0.50 : 0.52;
-
-        const entryPrice = activeSignal.optionEntry || (isSensex ? 340 : 135);
-        const target1Price = activeSignal.optionTarget1 || (entryPrice * 1.25);
-        const target2Price = activeSignal.optionTarget2 || (entryPrice * 1.45);
-        const slPrice = activeSignal.optionSl || (entryPrice * 0.86);
-
-        const spotT1Pts = Number(((target1Price - entryPrice) / delta).toFixed(1));
-        const spotT2Pts = Number(((target2Price - entryPrice) / delta).toFixed(1));
-        const spotSlPts = Number(((entryPrice - slPrice) / delta).toFixed(1));
-
-        const spotSl = isCe ? Number((spotEntry - spotSlPts).toFixed(2)) : Number((spotEntry + spotSlPts).toFixed(2));
-        const spotTarget1 = isCe ? Number((spotEntry + spotT1Pts).toFixed(2)) : Number((spotEntry - spotT1Pts).toFixed(2));
-        const spotTarget2 = isCe ? Number((spotEntry + spotT2Pts).toFixed(2)) : Number((spotEntry - spotT2Pts).toFixed(2));
-
         const isMobileScreen = (container.clientWidth || window.innerWidth) < 640;
+
+        // Trade Levels: In OPTION mode we use Option Premium in ₹, in SPOT mode we use Spot Index
+        const spotT1Pts = Number(((target1Price - baseEntryPrice) / delta).toFixed(1));
+        const spotT2Pts = Number(((target2Price - baseEntryPrice) / delta).toFixed(1));
+        const spotSlPts = Number(((baseEntryPrice - slPrice) / delta).toFixed(1));
+
+        const entryLinePrice = chartMode === 'OPTION' ? baseEntryPrice : spotEntry;
+        const target1LinePrice = chartMode === 'OPTION'
+          ? target1Price
+          : (isCe ? Number((spotEntry + spotT1Pts).toFixed(2)) : Number((spotEntry - spotT1Pts).toFixed(2)));
+        const target2LinePrice = chartMode === 'OPTION'
+          ? target2Price
+          : (isCe ? Number((spotEntry + spotT2Pts).toFixed(2)) : Number((spotEntry - spotT2Pts).toFixed(2)));
+        const slLinePrice = chartMode === 'OPTION'
+          ? slPrice
+          : (isCe ? Number((spotEntry - spotSlPts).toFixed(2)) : Number((spotEntry + spotSlPts).toFixed(2)));
 
         // 1. Entry Line (Blue Solid)
         candleSeries.createPriceLine({
-          price: spotEntry,
+          price: entryLinePrice,
           color: '#2563eb',
           lineWidth: 2,
           lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
-          title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${spotEntry}`
+          title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${entryLinePrice}`
         });
 
         // 2. Target 1 Line (Green Dashed)
         candleSeries.createPriceLine({
-          price: spotTarget1,
+          price: target1LinePrice,
           color: '#16a34a',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${spotTarget1} (BOOK 50%)`
+          title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+25%)`
         });
 
         // 3. Target 2 Line (Emerald Dashed)
         candleSeries.createPriceLine({
-          price: spotTarget2,
+          price: target2LinePrice,
           color: '#059669',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${spotTarget2} (MAX PROFIT)`
+          title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${target2LinePrice} (+45%)`
         });
 
         // 4. Stop Loss Line (Red Dashed)
         candleSeries.createPriceLine({
-          price: spotSl,
+          price: slLinePrice,
           color: '#dc2626',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isMobileScreen ? 'SL' : `SL: ₹${spotSl} (EXIT)`
+          title: isMobileScreen ? 'SL' : `SL: ₹${slLinePrice} (-14%)`
         });
 
         // Determine exact Entry candle index
@@ -348,7 +380,7 @@ export default function TradingChart({
         }
 
         if (entryIdx === -1) {
-          entryIdx = formattedCandles.findIndex(c => Math.abs(c.close - spotEntry) < 8);
+          entryIdx = formattedCandles.findIndex(c => Math.abs(c.close - entryLinePrice) < (chartMode === 'OPTION' ? 4 : 8));
         }
         if (entryIdx === -1) {
           entryIdx = 0;
@@ -358,13 +390,16 @@ export default function TradingChart({
 
         if (entryIdx >= 0 && formattedCandles[entryIdx]) {
           const entryCandle = formattedCandles[entryIdx];
+          const badgeEntryPrice = chartMode === 'OPTION' ? baseEntryPrice : spotEntry;
           badges.push({
             time: entryCandle.time,
             price: isCe ? entryCandle.low : entryCandle.high,
             isAbove: !isCe, // For CE, placed below pointing up; for PE, placed above pointing down
             text: isMobileScreen
               ? (isCe ? '▲ BUY CALL' : '▼ BUY PUT')
-              : (isCe ? `BUY CALL ENTRY @ ₹${spotEntry}` : `BUY PUT ENTRY @ ₹${spotEntry}`),
+              : (chartMode === 'OPTION'
+                  ? `BUY ENTRY @ ₹${badgeEntryPrice}`
+                  : (isCe ? `BUY CALL ENTRY @ ₹${badgeEntryPrice}` : `BUY PUT ENTRY @ ₹${badgeEntryPrice}`)),
             bgColor: isCe ? '#16a34a' : '#dc2626'
           });
         }
@@ -379,7 +414,8 @@ export default function TradingChart({
           const exitCandle = formattedCandles[exitIdx];
           const isTargetHit = activeSignal.status === 'TARGET_HIT' || activeSignal.result?.includes('Target');
           const isSlHit = activeSignal.status === 'SL_HIT' || activeSignal.result?.includes('Stop Loss');
-          const pnlText = activeSignal.pnl ? (activeSignal.pnl > 0 ? `+₹${activeSignal.pnl}` : `-₹${Math.abs(activeSignal.pnl)}`) : '+₹1859';
+          const pnlText = activeSignal.pnl ? (activeSignal.pnl > 0 ? `+₹${activeSignal.pnl}` : `-₹${Math.abs(activeSignal.pnl)}`) : '+₹2048';
+          const badgeExitPrice = chartMode === 'OPTION' ? (isTargetHit ? target1Price : slPrice) : null;
 
           badges.push({
             time: exitCandle.time,
@@ -387,7 +423,9 @@ export default function TradingChart({
             isAbove: isCe, // Placed on opposite side of entry so they NEVER overlap!
             text: isMobileScreen
               ? (isTargetHit ? `🎯 TGT HIT` : `🛑 SL HIT`)
-              : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`),
+              : (chartMode === 'OPTION'
+                  ? (isTargetHit ? `TARGET 1 HIT @ ₹${badgeExitPrice} (${pnlText})` : `STOP LOSS HIT @ ₹${badgeExitPrice} (${pnlText})`)
+                  : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`)),
             bgColor: isTargetHit ? '#16a34a' : '#dc2626'
           });
         }
@@ -426,9 +464,12 @@ export default function TradingChart({
       }
     };
   }, [
+    chartMode,
     candles,
     showVWAP,
     activeSignal?.action,
+    activeSignal?.strikeName,
+    activeSignal?.optionEntry,
     activeSignal?.spotTrigger,
     activeSignal?.entryCandleIndex,
     activeSignal?.exitCandleIndex,
@@ -442,16 +483,41 @@ export default function TradingChart({
       {/* Zerodha Kite Style Chart Header */}
       <div className="flex flex-wrap items-center justify-between px-3 py-1.5 border-b border-slate-200 bg-white shrink-0 gap-2">
 
-        {/* Left: Ticker & Timeframes */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-slate-800 tracking-tight">
-              {instrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'}
-            </span>
-            <span className="text-[10px] text-slate-400 font-semibold uppercase">INDEX</span>
+        {/* Left: Ticker & Dynamic Mode Switcher (SPOT vs ACTIVE OPTION) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          {/* Dynamic Switcher Pill */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => setChartMode('SPOT')}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer ${
+                chartMode === 'SPOT'
+                  ? 'bg-white text-slate-900 shadow-2xs font-black'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              {instrument === 'SENSEX' ? 'SENSEX SPOT' : 'NIFTY SPOT'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMode('OPTION')}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
+                chartMode === 'OPTION'
+                  ? (isCe ? 'bg-emerald-600 text-white shadow-2xs font-black' : 'bg-rose-600 text-white shadow-2xs font-black')
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${chartMode === 'OPTION' ? 'bg-white' : (isCe ? 'bg-emerald-500' : 'bg-rose-500')} animate-pulse`}></span>
+              <span>{dynamicStrikeName}</span>
+              <span className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${
+                chartMode === 'OPTION' ? 'bg-black/25 text-white' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {chartMode === 'OPTION' ? 'LIVE' : (isCe ? 'CE' : 'PE')}
+              </span>
+            </button>
           </div>
 
-          <div className="h-3 w-[1px] bg-slate-200"></div>
+          <div className="h-3 w-[1px] bg-slate-200 hidden sm:block"></div>
 
           <div className="flex items-center gap-0.5 text-[11px]">
             {['1m', '3m', '5m', '15m'].map(tf => (
@@ -473,15 +539,15 @@ export default function TradingChart({
         <div className="hidden sm:flex items-center gap-3 text-[10px] font-sans font-medium">
           <div className="flex items-center gap-1 text-[#387ed1]">
             <span className="w-2.5 h-0.5 bg-[#387ed1] inline-block"></span>
-            <span>Entry Line</span>
+            <span>{chartMode === 'OPTION' ? `Entry @ ₹${baseEntryPrice}` : 'Entry Line'}</span>
           </div>
           <div className="flex items-center gap-1 text-[#00a86b]">
             <span className="w-2.5 h-0.5 bg-[#00a86b] inline-block"></span>
-            <span>Targets 1 & 2</span>
+            <span>{chartMode === 'OPTION' ? `Target 1 @ ₹${target1Price}` : 'Targets 1 & 2'}</span>
           </div>
           <div className="flex items-center gap-1 text-[#df514c]">
             <span className="w-2.5 h-0.5 bg-[#df514c] inline-block"></span>
-            <span>Stop Loss</span>
+            <span>{chartMode === 'OPTION' ? `SL @ ₹${slPrice}` : 'Stop Loss'}</span>
           </div>
         </div>
 
