@@ -138,7 +138,7 @@ export default function TradingChart({
   const delta = isSensex ? 0.50 : 0.52;
   const spotEntry = activeSignal?.spotTrigger || (candles && candles[3]?.close) || currentPrice;
   const baseEntryPrice = activeSignal?.optionEntry || (isSensex ? 323.2 : 125.8);
-  const target1Price = activeSignal?.optionTarget1 || Number((baseEntryPrice * 1.25).toFixed(1));
+  const target1Price = activeSignal?.optionTarget1 || Number((baseEntryPrice * 1.18).toFixed(1));
   const target2Price = activeSignal?.optionTarget2 || Number((baseEntryPrice * 1.45).toFixed(1));
   const slPrice = activeSignal?.optionSl || Number((baseEntryPrice * 0.86).toFixed(1));
 
@@ -346,7 +346,7 @@ export default function TradingChart({
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
-          title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+25%)`
+          title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+18%)`
         });
 
         // 3. Target 2 Line (Emerald Dashed)

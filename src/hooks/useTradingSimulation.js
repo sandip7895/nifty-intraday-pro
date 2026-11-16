@@ -238,7 +238,7 @@ export function useTradingSimulation() {
           entryPrice: pos.entryPrice,
           exitPrice: pos.target1,
           pnl: Number(((pos.target1 - pos.entryPrice) * pos.qty).toFixed(2)),
-          reason: '🎯 Target 1 Auto-Booked (+25%)',
+          reason: '🎯 Target 1 Auto-Booked (+18%)',
           status: 'PROFIT'
         });
       }

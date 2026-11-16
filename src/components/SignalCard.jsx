@@ -17,9 +17,9 @@ export default function SignalCard({
   const spotEntry = activeSignal.spotTrigger || (isSensex ? 81592.45 : 25189.10);
   const isCe = isBuyCe || !isBuyPe;
 
-  // Option Calculations (Target 1: +25%, Target 2: +45%, SL: -14%)
+  // Option Calculations (Target 1: +18%, Target 2: +45%, SL: -14%)
   const entryPrice = activeSignal.optionEntry || (isSensex ? 340 : 135);
-  const target1Price = activeSignal.optionTarget1 || (entryPrice * 1.25);
+  const target1Price = activeSignal.optionTarget1 || (entryPrice * 1.18);
   const target2Price = activeSignal.optionTarget2 || (entryPrice * 1.45);
   const slPrice = activeSignal.optionSl || (entryPrice * 0.86);
 
@@ -162,7 +162,7 @@ export default function SignalCard({
             {/* 3. TARGET 1 */}
             <div className="p-2 rounded bg-slate-50 border border-slate-200">
               <span className="text-[9px] font-bold text-[#00a86b] uppercase tracking-wider block">
-                TARGET 1 (+25%)
+                TARGET 1 (+18%)
               </span>
               <div className="text-sm font-bold font-mono text-[#00a86b] mt-0.5">
                 ₹{target1Price.toFixed(1)}

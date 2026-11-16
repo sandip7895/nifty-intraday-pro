@@ -18,7 +18,7 @@ export const INSTRUMENTS = {
     defaultCeEntry: 135.00,
     defaultPeEntry: 130.00,
     delta: 0.52,         // Intraday ATM delta
-    target1Pct: 0.25,    // +25% Target 1 (1:2.0 Risk-to-Reward)
+    target1Pct: 0.18,    // +18% Target 1 (High-Accuracy Quick Momentum Target)
     target2Pct: 0.45,    // +45% Target 2
     slPct: 0.14,         // -14% Strict Stop Loss
     defaultPrice: 25144.30
@@ -34,7 +34,7 @@ export const INSTRUMENTS = {
     defaultCeEntry: 350.00,
     defaultPeEntry: 340.00,
     delta: 0.50,         // Intraday ATM delta
-    target1Pct: 0.25,    // +25% Target 1 (1:2.0 Risk-to-Reward)
+    target1Pct: 0.18,    // +18% Target 1 (High-Accuracy Quick Momentum Target)
     target2Pct: 0.45,    // +45% Target 2
     slPct: 0.14,         // -14% Strict Stop Loss
     defaultPrice: 81592.45
@@ -85,7 +85,7 @@ export function parseYahooCandles(result) {
 // 1. Day Open Alignment Rule (Prevents counter-trend fake setups)
 // 2. 15-Min Opening Range Breakout (ORB)
 // 3. 9/21/50 EMA Institutional Ribbon on Spot
-// 4. Upgraded 1:2.0 Risk-to-Reward (25% Target 1 vs 14% SL)
+// 4. High-Accuracy 18% Target 1 vs 14% SL
 export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumentKey = 'NIFTY') {
   if (!currentDayCandles || currentDayCandles.length < 4) {
     return null;
@@ -325,7 +325,7 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
     triggeredTrade.exitPrice = exitPrice;
     triggeredTrade.exitCandleIndex = exitCandleIndex;
     triggeredTrade.pnl = pnl;
-    triggeredTrade.result = outcome === 'TARGET_HIT' ? 'Target 1 Achieved (+25%)' : 'SL Hit (-14%)';
+    triggeredTrade.result = outcome === 'TARGET_HIT' ? 'Target 1 Achieved (+18%)' : 'SL Hit (-14%)';
     triggeredTrade.accuracy = outcome === 'TARGET_HIT' ? 90 : 50;
   }
 
