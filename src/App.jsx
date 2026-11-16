@@ -56,7 +56,7 @@ export default function App() {
   const currentVWAP = isReplaying && activeCandles.length > 0
     ? Number((activeCandles.reduce((a, c) => a + c.close, 0) / activeCandles.length).toFixed(2))
     : liveVwap;
-  
+
   const activeSignal = isReplaying ? {
     action: replayedDay.trade.type,
     actionText: replayedDay.trade.actionText,
@@ -88,7 +88,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen lg:h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#f8fafc] text-slate-800 overflow-y-auto lg:overflow-hidden font-sans select-none">
-      
+
       {/* Top Sleek Sahi / Kite Style Navbar */}
       <Navbar
         selectedInstrument={instrument}
@@ -104,46 +104,42 @@ export default function App() {
 
       {/* Main Dashboard Container */}
       <main className="flex-1 min-h-0 w-full p-2 sm:p-3 flex flex-col gap-2.5 overflow-y-auto lg:overflow-hidden pb-20 lg:pb-2.5">
-        
+
         {/* Mobile View Switcher - Modern Segmented Control */}
         <div className="lg:hidden flex items-center bg-slate-200/70 p-1 rounded-xl shrink-0 shadow-2xs">
           <button
             onClick={() => setMobileTab('all')}
-            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${
-              mobileTab === 'all'
+            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'all'
                 ? 'bg-white text-blue-600 font-extrabold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 font-medium'
-            }`}
+              }`}
           >
             Overview
           </button>
           <button
             onClick={() => setMobileTab('chart')}
-            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${
-              mobileTab === 'chart'
+            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'chart'
                 ? 'bg-white text-blue-600 font-extrabold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 font-medium'
-            }`}
+              }`}
           >
             Chart
           </button>
           <button
             onClick={() => setMobileTab('signal')}
-            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${
-              mobileTab === 'signal'
+            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'signal'
                 ? 'bg-white text-blue-600 font-extrabold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 font-medium'
-            }`}
+              }`}
           >
             Trade Signal
           </button>
           <button
             onClick={() => setMobileTab('positions')}
-            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${
-              mobileTab === 'positions'
+            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'positions'
                 ? 'bg-white text-blue-600 font-extrabold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 font-medium'
-            }`}
+              }`}
           >
             Positions ({positions.length})
           </button>
@@ -170,15 +166,13 @@ export default function App() {
 
         {/* Upper Core Area (Chart + Trade Signal) */}
         <div className="flex-1 min-h-0 grid grid-cols-12 gap-2 sm:gap-2.5">
-          
+
           {/* Main Real-Market Chart */}
-          <div className={`col-span-12 lg:col-span-8 ${
-            mobileTab === 'all' || mobileTab === 'chart' ? 'block' : 'hidden'
-          } lg:block ${
-            mobileTab === 'chart' 
-              ? 'h-[calc(100dvh-170px)] min-h-[500px]' 
+          <div className={`col-span-12 lg:col-span-8 ${mobileTab === 'all' || mobileTab === 'chart' ? 'block' : 'hidden'
+            } lg:block ${mobileTab === 'chart'
+              ? 'h-[calc(100dvh-170px)] min-h-[500px]'
               : 'h-[460px] sm:h-[540px] lg:h-full'
-          } min-h-0`}>
+            } min-h-0`}>
             <TradingChart
               instrument={isReplaying ? (replayedDay.trade.strike?.includes('SENSEX') ? 'SENSEX' : 'NIFTY') : instrument}
               candles={activeCandles}
@@ -191,9 +185,8 @@ export default function App() {
           </div>
 
           {/* Real-Market Trade Signal Card */}
-          <div className={`col-span-12 lg:col-span-4 ${
-            mobileTab === 'all' || mobileTab === 'signal' ? 'block' : 'hidden'
-          } lg:block min-h-[380px] lg:h-full min-h-0`}>
+          <div className={`col-span-12 lg:col-span-4 ${mobileTab === 'all' || mobileTab === 'signal' ? 'block' : 'hidden'
+            } lg:block min-h-[380px] lg:h-full min-h-0`}>
             <SignalCard
               activeSignal={activeSignal}
               onExecutePaperTrade={executePaperTrade}
@@ -203,9 +196,8 @@ export default function App() {
         </div>
 
         {/* Lower Core Area (Active Position & Today's Completed Trades) */}
-        <div className={`${
-          mobileTab === 'all' || mobileTab === 'positions' ? 'block' : 'hidden'
-        } lg:block shrink-0`}>
+        <div className={`${mobileTab === 'all' || mobileTab === 'positions' ? 'block' : 'hidden'
+          } lg:block shrink-0`}>
           <PaperTradeManager
             positions={positions}
             closedTrades={closedTrades}
@@ -217,13 +209,12 @@ export default function App() {
 
       {/* Sahi / Dhan Style Native Mobile Bottom App Bar */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] px-2 py-1.5 flex items-center justify-around pb-[calc(env(safe-area-inset-bottom,4px)+6px)]">
-        
+
         {/* Tab 1: Overview */}
         <button
           onClick={() => setMobileTab('all')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer ${
-            mobileTab === 'all' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer ${mobileTab === 'all' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
+            }`}
         >
           <LayoutGrid className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] tracking-tight">Overview</span>
@@ -232,9 +223,8 @@ export default function App() {
         {/* Tab 2: Chart */}
         <button
           onClick={() => setMobileTab('chart')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer ${
-            mobileTab === 'chart' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer ${mobileTab === 'chart' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
+            }`}
         >
           <TrendingUp className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] tracking-tight">Chart</span>
@@ -243,9 +233,8 @@ export default function App() {
         {/* Tab 3: Signal */}
         <button
           onClick={() => setMobileTab('signal')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer relative ${
-            mobileTab === 'signal' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer relative ${mobileTab === 'signal' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
+            }`}
         >
           <Zap className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] tracking-tight">Signal</span>
@@ -270,14 +259,14 @@ export default function App() {
           )}
         </button>
 
-        {/* Tab 5: Backtest Report */}
-        <button
-          onClick={() => setIsBacktestModalOpen(true)}
-          className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 font-medium transition cursor-pointer"
-        >
-          <Database className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] tracking-tight">Report</span>
-        </button>
+      {/* Tab 5: Backtest Report */}
+      <button
+        onClick={() => setIsBacktestModalOpen(true)}
+        className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 font-medium transition cursor-pointer"
+      >
+        <Database className="w-5 h-5 mb-0.5" />
+        <span className="text-[10px] tracking-tight">Report</span>
+      </button>
 
       </nav>
 
