@@ -234,7 +234,7 @@ export default function SignalCard({
                 Margin Req: <strong className="text-slate-800 font-mono font-bold">₹{marginRequired.toLocaleString('en-IN')}</strong>
               </span>
               <span>
-                Risk : Reward <strong className="text-emerald-600 font-mono font-bold">1:2.0</strong> (Institutional R:R)
+                Risk : Reward <strong className="text-emerald-600 font-mono font-bold">1:1.3</strong> (Institutional R:R)
               </span>
             </div>
           </div>

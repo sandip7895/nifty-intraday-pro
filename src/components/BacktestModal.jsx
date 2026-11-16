@@ -380,7 +380,7 @@ export default function BacktestModal({
                   </span>
                 </div>
                 <span className="text-[8px] sm:text-[9px] text-slate-400 truncate block mt-0.5">
-                  Institutional R:R: <strong className="text-slate-600">1:2.0</strong>
+                  Institutional R:R: <strong className="text-slate-600">1:1.3</strong>
                 </span>
               </div>
 

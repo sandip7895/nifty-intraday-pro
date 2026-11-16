@@ -219,7 +219,8 @@ export function useTradingSimulation() {
     positions.forEach(pos => {
       const isCe = pos.type === 'BUY_CE';
       const spotDelta = isCe ? (currentPrice - pos.spotAtEntry) : (pos.spotAtEntry - currentPrice);
-      const liveOptPrice = Number(Math.max(1, pos.entryPrice + spotDelta * currentConfig.delta).toFixed(1));
+      const posDelta = pos.instrument === 'SENSEX' ? 0.50 : 0.52;
+      const liveOptPrice = Number(Math.max(1, pos.entryPrice + spotDelta * posDelta).toFixed(1));
       const livePnl = Number(((liveOptPrice - pos.entryPrice) * pos.qty).toFixed(2));
       const livePnlPct = Number((((liveOptPrice - pos.entryPrice) / pos.entryPrice) * 100).toFixed(1));
 
