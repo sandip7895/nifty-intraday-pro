@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   calculateCPR,
   calculateEMA,
@@ -8,6 +8,11 @@ import {
   INSTRUMENTS,
   fetchLatestSession
 } from '../services/marketDataService';
+import {
+  playSignalChime,
+  playTargetChime,
+  playSlChime
+} from '../services/audioService';
 
 // Check if Indian Stock Market (NSE / BSE) is open in IST
 export function checkIsMarketOpen() {
@@ -156,6 +161,18 @@ export function useTradingSimulation() {
     timestamp: '--'
   };
 
+  // Audio alert chime when a new live signal appears
+  const lastSignalRef = useRef(null);
+  useEffect(() => {
+    if (activeSignal && activeSignal.action !== 'WAIT' && activeSignal.strikeName) {
+      const sigKey = `${activeSignal.instrument}_${activeSignal.strikeName}_${activeSignal.timestamp}`;
+      if (lastSignalRef.current && lastSignalRef.current !== sigKey) {
+        playSignalChime();
+      }
+      lastSignalRef.current = sigKey;
+    }
+  }, [activeSignal?.instrument, activeSignal?.strikeName, activeSignal?.timestamp, activeSignal?.action]);
+
   // Paper Trade Execution
   const executePaperTrade = (signal) => {
     if (!signal || signal.action === 'WAIT') return false;
@@ -189,6 +206,86 @@ export function useTradingSimulation() {
     setPositions(prev => [newPosition, ...prev]);
     return true;
   };
+
+  // Live P&L tracking and Auto Target 1 / SL Exit for open paper trade positions
+  useEffect(() => {
+    if (positions.length === 0 || !currentPrice) return;
+
+    let hasExits = false;
+    const remainingPositions = [];
+    const newClosed = [];
+    let fundToAdd = 0;
+
+    positions.forEach(pos => {
+      const isCe = pos.type === 'BUY_CE';
+      const spotDelta = isCe ? (currentPrice - pos.spotAtEntry) : (pos.spotAtEntry - currentPrice);
+      const liveOptPrice = Number(Math.max(1, pos.entryPrice + spotDelta * currentConfig.delta).toFixed(1));
+      const livePnl = Number(((liveOptPrice - pos.entryPrice) * pos.qty).toFixed(2));
+      const livePnlPct = Number((((liveOptPrice - pos.entryPrice) / pos.entryPrice) * 100).toFixed(1));
+
+      // Auto Target 1 Exit
+      if (liveOptPrice >= pos.target1) {
+        hasExits = true;
+        fundToAdd += pos.target1 * pos.qty;
+        playTargetChime();
+        newClosed.push({
+          id: 'closed-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+          type: pos.type,
+          strike: pos.strike,
+          instrument: pos.instrument,
+          qty: pos.qty,
+          entryPrice: pos.entryPrice,
+          exitPrice: pos.target1,
+          pnl: Number(((pos.target1 - pos.entryPrice) * pos.qty).toFixed(2)),
+          reason: '🎯 Target 1 Auto-Booked (+25%)',
+          status: 'PROFIT'
+        });
+      }
+      // Auto Stop Loss Exit
+      else if (liveOptPrice <= pos.sl) {
+        hasExits = true;
+        fundToAdd += pos.sl * pos.qty;
+        playSlChime();
+        newClosed.push({
+          id: 'closed-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+          type: pos.type,
+          strike: pos.strike,
+          instrument: pos.instrument,
+          qty: pos.qty,
+          entryPrice: pos.entryPrice,
+          exitPrice: pos.sl,
+          pnl: Number(((pos.sl - pos.entryPrice) * pos.qty).toFixed(2)),
+          reason: '🛑 Stop Loss Auto-Cut (-14%)',
+          status: 'LOSS'
+        });
+      }
+      // Position still active - update live price & PnL
+      else {
+        remainingPositions.push({
+          ...pos,
+          currentPrice: liveOptPrice,
+          pnl: livePnl,
+          pnlPercent: livePnlPct
+        });
+      }
+    });
+
+    if (hasExits) {
+      if (fundToAdd > 0) setPaperBalance(b => b + fundToAdd);
+      setClosedTrades(closed => [...newClosed, ...closed]);
+      setPositions(remainingPositions);
+    } else {
+      const changed = positions.some((p, idx) => {
+        const updated = remainingPositions[idx];
+        return updated && (p.currentPrice !== updated.currentPrice || p.pnl !== updated.pnl);
+      });
+      if (changed) {
+        setPositions(remainingPositions);
+      }
+    }
+  }, [currentPrice, currentConfig.delta]);
 
   const closePositionManually = (positionId) => {
     const pos = positions.find(p => p.id === positionId);

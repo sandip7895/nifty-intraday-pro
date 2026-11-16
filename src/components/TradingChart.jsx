@@ -278,11 +278,21 @@ export default function TradingChart({
       if (activeSignal && activeSignal.action !== 'WAIT') {
         const isCe = activeSignal.action === 'BUY_CE';
         const spotEntry = activeSignal.spotTrigger || (formattedCandles[3]?.close || currentPrice);
+        const isSensex = instrument === 'SENSEX' || activeSignal.instrument === 'SENSEX';
+        const delta = isSensex ? 0.50 : 0.52;
 
-        // Spot target & SL calculation
-        const spotSl = isCe ? Number((spotEntry - 35).toFixed(2)) : Number((spotEntry + 35).toFixed(2));
-        const spotTarget1 = isCe ? Number((spotEntry + 50).toFixed(2)) : Number((spotEntry - 50).toFixed(2));
-        const spotTarget2 = isCe ? Number((spotEntry + 90).toFixed(2)) : Number((spotEntry - 90).toFixed(2));
+        const entryPrice = activeSignal.optionEntry || (isSensex ? 340 : 135);
+        const target1Price = activeSignal.optionTarget1 || (entryPrice * 1.25);
+        const target2Price = activeSignal.optionTarget2 || (entryPrice * 1.45);
+        const slPrice = activeSignal.optionSl || (entryPrice * 0.86);
+
+        const spotT1Pts = Number(((target1Price - entryPrice) / delta).toFixed(1));
+        const spotT2Pts = Number(((target2Price - entryPrice) / delta).toFixed(1));
+        const spotSlPts = Number(((entryPrice - slPrice) / delta).toFixed(1));
+
+        const spotSl = isCe ? Number((spotEntry - spotSlPts).toFixed(2)) : Number((spotEntry + spotSlPts).toFixed(2));
+        const spotTarget1 = isCe ? Number((spotEntry + spotT1Pts).toFixed(2)) : Number((spotEntry - spotT1Pts).toFixed(2));
+        const spotTarget2 = isCe ? Number((spotEntry + spotT2Pts).toFixed(2)) : Number((spotEntry - spotT2Pts).toFixed(2));
 
         const isMobileScreen = (container.clientWidth || window.innerWidth) < 640;
 

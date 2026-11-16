@@ -4,8 +4,11 @@ import {
   BarChart2,
   Maximize2,
   Minimize2,
-  Wallet
+  Wallet,
+  Bell,
+  BellOff
 } from 'lucide-react';
+import { isSoundEnabled, setSoundEnabled, playSignalChime } from '../services/audioService';
 
 export default function Navbar({
   selectedInstrument = 'NIFTY',
@@ -20,6 +23,16 @@ export default function Navbar({
 }) {
   const isUp = priceChange >= 0;
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [soundOn, setSoundOn] = useState(isSoundEnabled());
+
+  const handleToggleSound = () => {
+    const next = !soundOn;
+    setSoundOn(next);
+    setSoundEnabled(next);
+    if (next) {
+      playSignalChime();
+    }
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -151,6 +164,19 @@ export default function Navbar({
               <RotateCcw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
             </button>
           </div>
+
+          {/* Audio Chime Alert Toggle */}
+          <button
+            onClick={handleToggleSound}
+            title={soundOn ? 'Trade Sound Alerts: Enabled (Click to Mute)' : 'Trade Sound Alerts: Muted (Click to Enable)'}
+            className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
+              soundOn
+                ? 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
+                : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            {soundOn ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+          </button>
 
           {/* Native Fullscreen (Desktop only) */}
           <button

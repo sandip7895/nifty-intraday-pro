@@ -220,11 +220,16 @@ export function run60DayBacktest(daySessions) {
           };
         }
       } else if (activeTrade && activeTrade.status === 'OPEN') {
-        const spotDelta = candle.close - activeTrade.spotEntry;
-        const optDelta = activeTrade.type === 'BUY_CE' ? spotDelta * 0.52 : -spotDelta * 0.52;
-        const currentOptPrice = activeTrade.entryPrice + optDelta;
+        const isCe = activeTrade.type === 'BUY_CE';
+        const bestSpotDelta = isCe ? (candle.high - activeTrade.spotEntry) : (activeTrade.spotEntry - candle.low);
+        const worstSpotDelta = isCe ? (candle.low - activeTrade.spotEntry) : (activeTrade.spotEntry - candle.high);
+        const closeSpotDelta = isCe ? (candle.close - activeTrade.spotEntry) : (activeTrade.spotEntry - candle.close);
 
-        if (currentOptPrice >= activeTrade.target1) {
+        const maxOptPrice = activeTrade.entryPrice + bestSpotDelta * 0.52;
+        const minOptPrice = activeTrade.entryPrice + worstSpotDelta * 0.52;
+        const currentOptPrice = activeTrade.entryPrice + closeSpotDelta * 0.52;
+
+        if (maxOptPrice >= activeTrade.target1 && minOptPrice > activeTrade.sl) {
           activeTrade.status = 'TARGET_HIT';
           activeTrade.exitPrice = activeTrade.target1;
           activeTrade.pnl = Number(((activeTrade.target1 - activeTrade.entryPrice) * activeTrade.qty).toFixed(2));
@@ -232,7 +237,7 @@ export function run60DayBacktest(daySessions) {
           activeTrade.result = 'Target 1 Achieved (+22%)';
           tradeLog.push(activeTrade);
           break;
-        } else if (currentOptPrice <= activeTrade.sl) {
+        } else if (minOptPrice <= activeTrade.sl && maxOptPrice < activeTrade.target1) {
           activeTrade.status = 'SL_HIT';
           activeTrade.exitPrice = activeTrade.sl;
           activeTrade.pnl = Number(((activeTrade.sl - activeTrade.entryPrice) * activeTrade.qty).toFixed(2));

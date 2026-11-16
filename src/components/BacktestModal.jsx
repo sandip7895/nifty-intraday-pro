@@ -134,11 +134,11 @@ export default function BacktestModal({
                   {getTitle()} {selectedInstrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'} Backtest
                 </h2>
                 <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-[#e6f4ea] text-[#00a86b] uppercase">
-                  v3 • Pro Confluence
+                  v3 • 3-Min Fast Execution
                 </span>
               </div>
               <p className="hidden sm:block text-[11px] text-slate-500 truncate">
-                Real 5-Min Candles (Up to 60 Days / 4,500+ Candles) • 15-Min ORB + 9/21 EMA + Day Open Rule • 1 Lot ({lotQty} Qty)
+                Real Candles (Up to 60 Days / 4,500+ Candles) • 15-Min ORB + 3-Min Fast Confirmation + 9/21 EMA • 1 Lot ({lotQty} Qty)
               </p>
             </div>
           </div>

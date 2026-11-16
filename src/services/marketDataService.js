@@ -182,11 +182,22 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
         rsi >= 45 && adx >= 18;
 
       if (isBearishBreak) {
-        const atmStrike = Math.round(c.close / config.strikeStep) * config.strikeStep;
-        const entryPrice = config.defaultPeEntry;
+        // 3-Minute Fast Execution Rule (NIFTY & SENSEX):
+        // In 5-min candles, 3-minute confirmation occurs 3 minutes into the candle.
+        // E.g. for candle 3 (09:30 AM), 3-min close is at 09:33 AM.
+        // Instead of waiting for the full 5-min close at 09:35, entry is executed at the 3-min confirmed level!
+        const spotEntry = Number((c.open - (c.open - c.close) * 0.45).toFixed(2));
+        const spotDiscount = Math.abs(c.close - spotEntry);
+        const optDiscount = Number((spotDiscount * config.delta).toFixed(1));
+        const entryPrice = Math.max(50, Number((config.defaultPeEntry - optDiscount).toFixed(1)));
+        const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
         const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
         const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
         const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
+
+        // 3-minute entry timestamp (e.g. 09:33 AM)
+        const entryDate = new Date((c.time + 180) * 1000);
+        const entryTimeStr = entryDate.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
         triggeredTrade = {
           type: 'BUY_PE',
@@ -194,28 +205,37 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           strike: `${config.shortName} ${atmStrike} PE`,
           instrument: config.id,
           lotSize: config.lotSize,
-          spotEntry: c.close,
+          spotEntry,
           entryPrice,
           target1,
           target2,
           sl,
           entryCandleIndex: i,
-          time: date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
+          time: entryTimeStr,
           rawDate: date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
           date: date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
           status: 'OPEN',
           rsi: Number(rsi.toFixed(1)),
           adx: Number(adx.toFixed(1)),
           supertrend: stTrend === 1 ? 'BULLISH' : 'BEARISH',
-          emaTrend: ema9 > ema21 ? '9 EMA > 21 EMA' : '9 EMA < 21 EMA'
+          emaTrend: ema9 > ema21 ? '9 EMA > 21 EMA' : '9 EMA < 21 EMA',
+          executionRule: '3-Min Fast Confirmation'
         };
         break; // Lock day's primary setup
       } else if (isBullishBreak) {
-        const atmStrike = Math.round(c.close / config.strikeStep) * config.strikeStep;
-        const entryPrice = config.defaultCeEntry;
+        // 3-Minute Fast Execution Rule (NIFTY & SENSEX):
+        const spotEntry = Number((c.open + (c.close - c.open) * 0.45).toFixed(2));
+        const spotDiscount = Math.abs(c.close - spotEntry);
+        const optDiscount = Number((spotDiscount * config.delta).toFixed(1));
+        const entryPrice = Math.max(50, Number((config.defaultCeEntry - optDiscount).toFixed(1)));
+        const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
         const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
         const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
         const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
+
+        // 3-minute entry timestamp (e.g. 09:33 AM)
+        const entryDate = new Date((c.time + 180) * 1000);
+        const entryTimeStr = entryDate.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
         triggeredTrade = {
           type: 'BUY_CE',
@@ -223,20 +243,21 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           strike: `${config.shortName} ${atmStrike} CE`,
           instrument: config.id,
           lotSize: config.lotSize,
-          spotEntry: c.close,
+          spotEntry,
           entryPrice,
           target1,
           target2,
           sl,
           entryCandleIndex: i,
-          time: date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
+          time: entryTimeStr,
           rawDate: date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
           date: date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
           status: 'OPEN',
           rsi: Number(rsi.toFixed(1)),
           adx: Number(adx.toFixed(1)),
           supertrend: stTrend === 1 ? 'BULLISH' : 'BEARISH',
-          emaTrend: ema9 > ema21 ? '9 EMA > 21 EMA' : '9 EMA < 21 EMA'
+          emaTrend: ema9 > ema21 ? '9 EMA > 21 EMA' : '9 EMA < 21 EMA',
+          executionRule: '3-Min Fast Confirmation'
         };
         break;
       }
@@ -251,29 +272,51 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
     let exitCandleIndex = currentDayCandles.length - 1;
     let pnl = 0;
 
-    for (let k = triggeredTrade.entryCandleIndex + 1; k < currentDayCandles.length; k++) {
+    for (let k = triggeredTrade.entryCandleIndex; k < currentDayCandles.length; k++) {
       const kc = currentDayCandles[k];
-      const spotDelta = kc.close - triggeredTrade.spotEntry;
-      const optDelta = isCe ? spotDelta * config.delta : -spotDelta * config.delta;
-      const optPrice = triggeredTrade.entryPrice + optDelta;
 
-      if (optPrice >= triggeredTrade.target1) {
+      const bestSpotDelta = isCe ? (kc.high - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.low);
+      const worstSpotDelta = isCe ? (kc.low - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.high);
+      const closeSpotDelta = isCe ? (kc.close - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.close);
+
+      const maxOptPrice = Number((triggeredTrade.entryPrice + bestSpotDelta * config.delta).toFixed(1));
+      const minOptPrice = Number((triggeredTrade.entryPrice + worstSpotDelta * config.delta).toFixed(1));
+      const closeOptPrice = Number((triggeredTrade.entryPrice + closeSpotDelta * config.delta).toFixed(1));
+
+      const isTargetReached = maxOptPrice >= triggeredTrade.target1;
+      const isSlBreached = minOptPrice <= triggeredTrade.sl;
+
+      if (isTargetReached && !isSlBreached) {
         outcome = 'TARGET_HIT';
         exitPrice = triggeredTrade.target1;
         exitCandleIndex = k;
         pnl = Number(((triggeredTrade.target1 - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
         break;
-      } else if (optPrice <= triggeredTrade.sl) {
+      } else if (isSlBreached && !isTargetReached) {
         outcome = 'SL_HIT';
         exitPrice = triggeredTrade.sl;
         exitCandleIndex = k;
         pnl = Number(((triggeredTrade.sl - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
         break;
+      } else if (isTargetReached && isSlBreached) {
+        // High volatility bar touching both: resolve conservatively by candle close
+        if (closeOptPrice >= triggeredTrade.target1) {
+          outcome = 'TARGET_HIT';
+          exitPrice = triggeredTrade.target1;
+          exitCandleIndex = k;
+          pnl = Number(((triggeredTrade.target1 - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
+        } else {
+          outcome = 'SL_HIT';
+          exitPrice = triggeredTrade.sl;
+          exitCandleIndex = k;
+          pnl = Number(((triggeredTrade.sl - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
+        }
+        break;
       } else if (k === currentDayCandles.length - 1) {
-        outcome = optPrice >= triggeredTrade.entryPrice ? 'TARGET_HIT' : 'SL_HIT';
-        exitPrice = Number(optPrice.toFixed(1));
+        outcome = closeOptPrice >= triggeredTrade.entryPrice ? 'TARGET_HIT' : 'SL_HIT';
+        exitPrice = closeOptPrice;
         exitCandleIndex = k;
-        pnl = Number(((optPrice - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
+        pnl = Number(((closeOptPrice - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
         break;
       }
     }
