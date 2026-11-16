@@ -5,7 +5,8 @@ import {
   CandlestickSeries,
   LineSeries,
   createSeriesMarkers,
-  LineStyle
+  LineStyle,
+  CrosshairMode
 } from 'lightweight-charts';
 import { Database } from 'lucide-react';
 
@@ -190,7 +191,7 @@ export default function TradingChart({
         horzLines: { color: '#f1f5f9' }
       },
       crosshair: {
-        mode: 1,
+        mode: CrosshairMode.Normal, // Smooth continuous crosshair movement across the chart without sticking to candles
         vertLine: {
           color: '#94a3b8',
           width: 1,
@@ -372,18 +373,32 @@ export default function TradingChart({
         let entryIdx = -1;
         if (typeof activeSignal.entryCandleIndex === 'number' && activeSignal.entryCandleIndex >= 0 && activeSignal.entryCandleIndex < formattedCandles.length) {
           entryIdx = activeSignal.entryCandleIndex;
-        } else if (activeSignal.timestamp) {
-          entryIdx = formattedCandles.findIndex(c => {
-            const tStr = new Date(c.time * 1000).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
-            return tStr.toLowerCase().replace(/\s/g, '') === activeSignal.timestamp.toLowerCase().replace(/\s/g, '');
-          });
+        } else if (activeSignal.timestamp && activeSignal.timestamp !== '--') {
+          // Robust timestamp parser (e.g. "09:33 am" maps accurately to the 09:30-09:35 candle)
+          const match = activeSignal.timestamp.match(/(\d+):(\d+)\s*(am|pm)?/i);
+          if (match) {
+            let h = parseInt(match[1], 10);
+            const m = parseInt(match[2], 10);
+            const ampm = match[3]?.toLowerCase();
+            if (ampm === 'pm' && h < 12) h += 12;
+            if (ampm === 'am' && h === 12) h = 0;
+            const signalTotalMinutes = h * 60 + m;
+
+            entryIdx = formattedCandles.findIndex(c => {
+              const cDate = new Date(c.time * 1000);
+              const cH = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
+              const cM = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', minute: 'numeric' }));
+              const cTotalMinutes = cH * 60 + cM;
+              return signalTotalMinutes >= cTotalMinutes && signalTotalMinutes < cTotalMinutes + 5;
+            });
+          }
         }
 
         if (entryIdx === -1) {
           entryIdx = formattedCandles.findIndex(c => Math.abs(c.close - entryLinePrice) < (chartMode === 'OPTION' ? 4 : 8));
         }
         if (entryIdx === -1) {
-          entryIdx = 0;
+          entryIdx = formattedCandles.length > 3 ? 3 : 0; // Default to 09:30 AM (Candle 3), never 09:15 open
         }
 
         const badges = [];
