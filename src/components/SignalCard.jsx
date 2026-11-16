@@ -14,20 +14,20 @@ export default function SignalCard({
   const spotEntry = activeSignal.spotTrigger || (isSensex ? 81592.45 : 25189.10);
   const isCe = isBuyCe || !isBuyPe;
 
-  // Logical spot SL & targets aligned with trade direction and index scale
-  const slPts = isSensex ? 100 : 35;
-  const t1Pts = isSensex ? 150 : 50;
-  const t2Pts = isSensex ? 270 : 90;
+  // Logical spot SL & targets with upgraded 1:2.0 Risk-to-Reward
+  const slPts = isSensex ? 90 : 35;
+  const t1Pts = isSensex ? 180 : 70;  // 1:2.0 R:R on Spot
+  const t2Pts = isSensex ? 300 : 120;
 
   const spotSl = isCe ? Number((spotEntry - slPts).toFixed(0)) : Number((spotEntry + slPts).toFixed(0));
   const spotTarget1 = isCe ? Number((spotEntry + t1Pts).toFixed(0)) : Number((spotEntry - t1Pts).toFixed(0));
   const spotTarget2 = isCe ? Number((spotEntry + t2Pts).toFixed(0)) : Number((spotEntry - t2Pts).toFixed(0));
 
-  // Option Calculations
+  // Option Calculations (Target 1: +25%, Target 2: +45%, SL: -14%)
   const entryPrice = activeSignal.optionEntry || (isSensex ? 340 : 130);
-  const target1Price = activeSignal.optionTarget1 || (isSensex ? 414.8 : 158.6);
-  const target2Price = activeSignal.optionTarget2 || (isSensex ? 476.0 : 182.0);
-  const slPrice = activeSignal.optionSl || (isSensex ? 289.0 : 110.5);
+  const target1Price = activeSignal.optionTarget1 || (isSensex ? 425.0 : 162.5);
+  const target2Price = activeSignal.optionTarget2 || (isSensex ? 493.0 : 188.5);
+  const slPrice = activeSignal.optionSl || (isSensex ? 292.4 : 111.8);
 
   const marginRequired = Math.round(entryPrice * qty);
   const target1Gain = Math.round((target1Price - entryPrice) * qty);
@@ -97,12 +97,12 @@ export default function SignalCard({
 
       {isWait ? (
         <div className="py-12 text-center text-slate-400 text-xs">
-          Scanning {isSensex ? 'BSE SENSEX' : 'NIFTY 50'} 5-minute candles for VWAP & 9 EMA high-probability confluence...
+          Scanning {isSensex ? 'BSE SENSEX' : 'NIFTY 50'} 5-minute candles for ORB & EMA Ribbon confluence...
         </div>
       ) : (
         <div className="my-2 space-y-2 flex-1 flex flex-col justify-around">
 
-          {/* Zerodha Kite Parameters Grid (Entry, SL, Target 1, Target 2) */}
+          {/* Parameters Grid (Entry, SL, Target 1, Target 2) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
 
             {/* 1. ENTRY */}
@@ -121,7 +121,7 @@ export default function SignalCard({
             {/* 2. STOP LOSS */}
             <div className="p-2 rounded bg-slate-50 border border-slate-200">
               <span className="text-[9px] font-bold text-[#df514c] uppercase tracking-wider block">
-                STOP LOSS (-15%)
+                STOP LOSS (-14%)
               </span>
               <div className="text-sm font-bold font-mono text-[#df514c] mt-0.5">
                 ₹{slPrice.toFixed(1)}
@@ -134,7 +134,7 @@ export default function SignalCard({
             {/* 3. TARGET 1 */}
             <div className="p-2 rounded bg-slate-50 border border-slate-200">
               <span className="text-[9px] font-bold text-[#00a86b] uppercase tracking-wider block">
-                TARGET 1 (+22%)
+                TARGET 1 (+25%)
               </span>
               <div className="text-sm font-bold font-mono text-[#00a86b] mt-0.5">
                 ₹{target1Price.toFixed(1)}
@@ -147,7 +147,7 @@ export default function SignalCard({
             {/* 4. TARGET 2 */}
             <div className="p-2 rounded bg-slate-50 border border-slate-200">
               <span className="text-[9px] font-bold text-[#00a86b] uppercase tracking-wider block">
-                TARGET 2 (+40%)
+                TARGET 2 (+45%)
               </span>
               <div className="text-sm font-bold font-mono text-[#00a86b] mt-0.5">
                 ₹{target2Price.toFixed(1)}
@@ -159,27 +159,27 @@ export default function SignalCard({
 
           </div>
 
-          {/* Confluence Checkpoints - Multi-Indicator High-Accuracy Confirmation */}
-          <div className="py-1 px-2 rounded bg-slate-50 border border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10.5px] text-slate-600">
+          {/* V3 Pro Confluence Checkpoints */}
+          <div className="py-1 px-2 rounded bg-slate-50 border border-slate-200 grid grid-cols-2 sm:grid-cols-5 gap-1 text-[10px] text-slate-600">
             <span className="flex items-center gap-1 font-medium">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
-              <span>VWAP Direction</span>
+              <span>15-Min ORB Filter</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
-              <span>9/21 EMA Trend</span>
+              <span>Day Open Rule</span>
+            </span>
+            <span className="flex items-center gap-1 font-medium">
+              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <span>9/21 EMA Ribbon</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
               <span>Supertrend (10,3)</span>
             </span>
-            <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
-              <span>RSI Zone</span>
-            </span>
             <span className="flex items-center gap-1 font-medium col-span-2 sm:col-span-1">
               <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
-              <span>ADX &gt; 20 Filter</span>
+              <span>ADX &gt; 18 Trend</span>
             </span>
           </div>
 
@@ -196,13 +196,13 @@ export default function SignalCard({
               <span>{isBuyCe ? 'BUY CALL (CE)' : 'BUY PUT (PE)'} • 1 LOT ({qty} QTY)</span>
             </button>
 
-            {/* Order Margin Details */}
+            {/* Order Margin & Upgraded R:R Details */}
             <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
               <span>
                 Margin Req: <strong className="text-slate-800 font-mono font-bold">₹{marginRequired.toLocaleString('en-IN')}</strong>
               </span>
               <span>
-                Risk : Reward <strong className="text-emerald-600 font-mono font-bold">1:2.0</strong>
+                Risk : Reward <strong className="text-emerald-600 font-mono font-bold">1:2.0</strong> (Institutional R:R)
               </span>
             </div>
           </div>

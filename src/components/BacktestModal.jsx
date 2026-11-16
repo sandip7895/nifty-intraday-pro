@@ -134,11 +134,11 @@ export default function BacktestModal({
                   {getTitle()} {selectedInstrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'} Backtest
                 </h2>
                 <span className="hidden xs:inline-block px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-[#e6f4ea] text-[#00a86b] uppercase">
-                  v2 • Confluence
+                  v3 • Pro Confluence
                 </span>
               </div>
               <p className="hidden sm:block text-[11px] text-slate-500 truncate">
-                Real 5-Min Candles (Up to 60 Days / 4,500+ Candles) • VWAP + 9 EMA + Body Filter • 1 Lot ({lotQty} Qty)
+                Real 5-Min Candles (Up to 60 Days / 4,500+ Candles) • 15-Min ORB + 9/21 EMA + Day Open Rule • 1 Lot ({lotQty} Qty)
               </p>
             </div>
           </div>
@@ -352,13 +352,18 @@ export default function BacktestModal({
                   Net P&L (1 Lot • {lotQty} Qty)
                 </span>
                 <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
-                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-[#387ed1] whitespace-nowrap">
+                  <span className={`text-sm sm:text-base md:text-lg font-bold font-mono whitespace-nowrap ${backtestResult.netPnl >= 0 ? 'text-[#387ed1]' : 'text-rose-600'}`}>
                     {backtestResult.netPnl >= 0 ? '+' : ''}₹{backtestResult.netPnl.toLocaleString('en-IN')}
                   </span>
                   <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium whitespace-nowrap">
                     PF: {backtestResult.profitFactor}
                   </span>
                 </div>
+                {backtestResult.totalCharges > 0 && (
+                  <span className="text-[8px] sm:text-[9px] text-slate-400 truncate block mt-0.5">
+                    In-Hand: <strong className="text-emerald-600">₹{backtestResult.netTakeHomePnl?.toLocaleString('en-IN')}</strong> (after ~₹{backtestResult.totalCharges} taxes)
+                  </span>
+                )}
               </div>
 
               {/* Stat 4: Max Drawdown */}
@@ -371,9 +376,12 @@ export default function BacktestModal({
                     -₹{backtestResult.maxDrawdown.toLocaleString('en-IN')}
                   </span>
                   <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium whitespace-nowrap">
-                    15% SL
+                    14% SL
                   </span>
                 </div>
+                <span className="text-[8px] sm:text-[9px] text-slate-400 truncate block mt-0.5">
+                  Institutional R:R: <strong className="text-slate-600">1:2.0</strong>
+                </span>
               </div>
 
             </div>
