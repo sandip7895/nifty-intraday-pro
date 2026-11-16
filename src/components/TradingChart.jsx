@@ -152,6 +152,28 @@ export default function TradingChart({
         textColor: '#475569',
         fontSize: 11
       },
+      localization: {
+        locale: 'en-IN',
+        dateFormat: "dd MMM ''yy",
+        timeFormatter: (time) => {
+          const timestamp = typeof time === 'number' ? time : (time?.timestamp || time);
+          if (!timestamp) return '';
+          const date = new Date(timestamp * 1000);
+          const dateStr = date.toLocaleDateString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            day: '2-digit',
+            month: 'short',
+            year: '2-digit'
+          });
+          const timeStr = date.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+          return `${dateStr}  ${timeStr}`;
+        }
+      },
       grid: {
         vertLines: { color: '#f1f5f9' },
         horzLines: { color: '#f1f5f9' }
@@ -181,7 +203,29 @@ export default function TradingChart({
       timeScale: {
         borderColor: '#cbd5e1',
         timeVisible: true,
-        secondsVisible: false
+        secondsVisible: false,
+        tickMarkFormatter: (time, tickMarkType) => {
+          const timestamp = typeof time === 'number' ? time : (time?.timestamp || time);
+          if (!timestamp) return null;
+          const date = new Date(timestamp * 1000);
+          switch (tickMarkType) {
+            case 0: // Year
+              return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+            case 1: // Month
+              return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
+            case 2: // DayOfMonth
+              return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
+            case 3: // Time
+            case 4: // TimeWithSeconds
+            default:
+              return date.toLocaleTimeString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              });
+          }
+        }
       }
     });
 
@@ -288,7 +332,7 @@ export default function TradingChart({
           entryIdx = activeSignal.entryCandleIndex;
         } else if (activeSignal.timestamp) {
           entryIdx = formattedCandles.findIndex(c => {
-            const tStr = new Date(c.time * 1000).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const tStr = new Date(c.time * 1000).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
             return tStr.toLowerCase().replace(/\s/g, '') === activeSignal.timestamp.toLowerCase().replace(/\s/g, '');
           });
         }

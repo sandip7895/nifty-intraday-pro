@@ -140,7 +140,9 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
     const adx = adxSeries[i]?.adx || 20;
     const stTrend = stSeries[i]?.trend; // 1 = Bullish (Green), -1 = Bearish (Red)
     const date = new Date(c.time * 1000);
-    const totalMinutes = date.getHours() * 60 + date.getMinutes();
+    const istHours = Number(date.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
+    const istMins = Number(date.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', minute: 'numeric' }));
+    const totalMinutes = istHours * 60 + istMins;
 
     // High-Probability Intraday Windows (09:45-11:30 AM & 01:15-02:30 PM)
     // Avoids 09:15-09:45 opening whipsaw and 11:30-01:15 lunch dead zone
@@ -190,9 +192,9 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           target2,
           sl,
           entryCandleIndex: i,
-          time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-          rawDate: date.toLocaleDateString('en-CA'),
-          date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+          time: date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
+          rawDate: date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
+          date: date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
           status: 'OPEN',
           rsi: Number(rsi.toFixed(1)),
           adx: Number(adx.toFixed(1)),
@@ -219,9 +221,9 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           target2,
           sl,
           entryCandleIndex: i,
-          time: date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-          rawDate: date.toLocaleDateString('en-CA'),
-          date: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+          time: date.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }),
+          rawDate: date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
+          date: date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
           status: 'OPEN',
           rsi: Number(rsi.toFixed(1)),
           adx: Number(adx.toFixed(1)),
@@ -298,7 +300,7 @@ export async function fetchLatestSession(instrumentKey = 'NIFTY') {
   const daysMap = {};
   allCandles.forEach(candle => {
     const dateObj = new Date(candle.time * 1000);
-    const dateKey = dateObj.toLocaleDateString('en-CA');
+    const dateKey = dateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     if (!daysMap[dateKey]) daysMap[dateKey] = [];
     daysMap[dateKey].push(candle);
   });
@@ -353,7 +355,7 @@ export async function fetchHistoricalCandles(range = '60d', instrumentKey = 'NIF
   const daysMap = {};
   allCandles.forEach(candle => {
     const dateObj = new Date(candle.time * 1000);
-    const dateKey = dateObj.toLocaleDateString('en-CA');
+    const dateKey = dateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     if (!daysMap[dateKey]) daysMap[dateKey] = [];
     daysMap[dateKey].push(candle);
   });
