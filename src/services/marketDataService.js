@@ -87,7 +87,7 @@ export function parseYahooCandles(result) {
 // 3. 9/21/50 EMA Institutional Ribbon on Spot
 // 4. Upgraded 1:2.0 Risk-to-Reward (25% Target 1 vs 14% SL)
 export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumentKey = 'NIFTY') {
-  if (!currentDayCandles || currentDayCandles.length < 10) {
+  if (!currentDayCandles || currentDayCandles.length < 4) {
     return null;
   }
 
