@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { Target, Shield, Check, ArrowRight, Zap, Info, Plus, Minus } from 'lucide-react';
+import { Target, Shield, Check, ArrowRight, Zap, Info, Plus, Minus, Pencil, RotateCcw } from 'lucide-react';
 
 export default function SignalCard({
   activeSignal,
   currentSpotPrice,
-  onExecutePaperTrade
+  onExecutePaperTrade,
+  onSetCustomPremium,
+  onClearCustomPremium
 }) {
   const [lotCount, setLotCount] = useState(1);
+  const [isEditingEntry, setIsEditingEntry] = useState(false);
+  const [entryInput, setEntryInput] = useState('');
 
   const isBuyCe = activeSignal.action === 'BUY_CE';
   const isBuyPe = activeSignal.action === 'BUY_PE';
@@ -153,14 +157,86 @@ export default function SignalCard({
           {/* Parameters Grid (Entry, SL, Target 1, Target 2) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
 
-            {/* 1. ENTRY */}
-            <div className="p-2 rounded bg-slate-50 border border-slate-200">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                ENTRY (BLUE LINE)
-              </span>
-              <div className="text-sm font-bold font-mono text-slate-900 mt-0.5">
-                ₹{entryPrice.toFixed(1)}
+            {/* 1. ENTRY (Editable to sync with Real Broker LTP e.g. ₹190) */}
+            <div className={`p-2 rounded border transition ${activeSignal.isCustomPremium ? 'bg-blue-50/70 border-blue-300' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                  {activeSignal.isCustomPremium ? 'ENTRY (SYNCED)' : 'ENTRY (EST.)'}
+                </span>
+                {onSetCustomPremium && !isEditingEntry && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEntryInput(String(entryPrice));
+                        setIsEditingEntry(true);
+                      }}
+                      title="Enter real broker option premium (e.g. 190)"
+                      className="p-0.5 rounded bg-white border border-slate-200 hover:border-blue-500 text-blue-600 transition cursor-pointer"
+                    >
+                      <Pencil className="w-2.5 h-2.5" />
+                    </button>
+                    {activeSignal.isCustomPremium && onClearCustomPremium && (
+                      <button
+                        type="button"
+                        onClick={onClearCustomPremium}
+                        title="Reset to default estimated premium"
+                        className="p-0.5 rounded bg-white border border-slate-200 hover:border-slate-400 text-slate-500 transition cursor-pointer"
+                      >
+                        <RotateCcw className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {isEditingEntry ? (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const parsed = parseFloat(entryInput);
+                    if (parsed > 0 && onSetCustomPremium) {
+                      onSetCustomPremium(parsed);
+                    }
+                    setIsEditingEntry(false);
+                  }}
+                  className="flex items-center gap-1 mt-1"
+                >
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    autoFocus
+                    value={entryInput}
+                    onChange={(e) => setEntryInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setIsEditingEntry(false); }}
+                    placeholder="190"
+                    className="w-full min-w-0 px-1.5 py-0.5 text-xs font-bold font-mono bg-white border border-blue-400 rounded outline-none text-slate-900"
+                  />
+                  <button
+                    type="submit"
+                    title="Apply Real Premium"
+                    className="p-1 rounded bg-blue-600 hover:bg-blue-700 text-white shrink-0 cursor-pointer"
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSetCustomPremium) {
+                      setEntryInput(String(entryPrice));
+                      setIsEditingEntry(true);
+                    }
+                  }}
+                  title="Click to enter your real broker LTP"
+                  className="text-sm font-bold font-mono text-slate-900 mt-0.5 hover:text-blue-600 transition cursor-pointer text-left block"
+                >
+                  ₹{entryPrice.toFixed(1)}
+                </button>
+              )}
+
               <span className="text-[10px] text-slate-500 font-mono block">
                 Spot ₹{spotEntry}
               </span>
