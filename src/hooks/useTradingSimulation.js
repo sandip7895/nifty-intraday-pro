@@ -57,13 +57,10 @@ export function checkIsMarketOpen() {
 export function useTradingSimulation() {
   const [instrument, setInstrument] = useState('NIFTY'); // 'NIFTY' | 'SENSEX'
   const [candles, setCandles] = useState([]);
-  const [prevCandles, setPrevCandles] = useState([]);
   const [prevDay, setPrevDay] = useState(null);
   const [confirmedTrade, setConfirmedTrade] = useState(null);
   const [isMarketOpen, setIsMarketOpen] = useState(checkIsMarketOpen());
   const [isFeedDelayed, setIsFeedDelayed] = useState(false);
-  const [feedLagMinutes, setFeedLagMinutes] = useState(0);
-  const [lastFeedTimeStr, setLastFeedTimeStr] = useState('');
   const [sessionDisplayDate, setSessionDisplayDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -88,11 +85,8 @@ export function useTradingSimulation() {
 
       if (data && data.candles && data.candles.length > 0) {
         setCandles(data.candles);
-        setPrevCandles(data.prevCandles || []);
         setPrevDay(data.prevDay);
         setIsFeedDelayed(Boolean(data.isFeedDelayed));
-        setFeedLagMinutes(data.feedLagMinutes || 0);
-        setLastFeedTimeStr(data.lastFeedTimeStr || '');
         setSessionDisplayDate(data.sessionDisplayDate || '');
 
         let finalTrade = data.confirmedTrade;
@@ -143,9 +137,7 @@ export function useTradingSimulation() {
     activeInstrumentRef.current = newInstrument;
     setInstrument(newInstrument);
     setCandles([]);
-    setPrevCandles([]);
     setConfirmedTrade(null);
-    setIsFeedDelayed(false);
   }, [instrument]);
 
   // Fetch on mount or when instrument changes + 10s live market polling
@@ -401,7 +393,6 @@ export function useTradingSimulation() {
     instrumentConfig: currentConfig,
     selectInstrument,
     candles,
-    prevCandles,
     hasCandles,
     currentPrice,
     dayOpen,
@@ -422,8 +413,6 @@ export function useTradingSimulation() {
     resetPaperAccount,
     isMarketOpen,
     isFeedDelayed,
-    feedLagMinutes,
-    lastFeedTimeStr,
     sessionDisplayDate,
     isLoading,
     error,

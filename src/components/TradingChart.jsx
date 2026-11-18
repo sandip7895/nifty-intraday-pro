@@ -122,7 +122,6 @@ class SignalBadgesPrimitive {
 export default function TradingChart({
   instrument = 'NIFTY',
   candles,
-  sessionStartIndex = 0,
   cpr,
   currentVWAP,
   currentPrice,
@@ -291,15 +290,11 @@ export default function TradingChart({
 
       candleSeries.setData(formattedCandles);
 
-      // VWAP Line (Blue) — resets cleanly at today's 09:15 AM open (sessionStartIndex) just like TradingView
+      // VWAP Line (Blue)
       if (showVWAP) {
         let cumulativeTPV = 0;
         let cumulativeVol = 0;
         const vwapData = formattedCandles.map((c, idx) => {
-          if (idx === sessionStartIndex && sessionStartIndex > 0) {
-            cumulativeTPV = 0;
-            cumulativeVol = 0;
-          }
           const tp = (c.high + c.low + c.close) / 3;
           const vol = candles[idx]?.volume || 1000;
           cumulativeTPV += tp * vol;
@@ -381,15 +376,12 @@ export default function TradingChart({
           title: isMobileScreen ? 'SL' : `SL: ₹${slLinePrice} (-14%)`
         });
 
-        // Determine exact Entry candle index (offset by sessionStartIndex when previous day context candles are prepended)
+        // Determine exact Entry candle index
         let entryIdx = -1;
-        if (typeof activeSignal.entryCandleIndex === 'number' && activeSignal.entryCandleIndex >= 0) {
-          const mappedIdx = sessionStartIndex + activeSignal.entryCandleIndex;
-          if (mappedIdx < formattedCandles.length) {
-            entryIdx = mappedIdx;
-          }
+        if (typeof activeSignal.entryCandleIndex === 'number' && activeSignal.entryCandleIndex >= 0 && activeSignal.entryCandleIndex < formattedCandles.length) {
+          entryIdx = activeSignal.entryCandleIndex;
         } else if (activeSignal.timestamp && activeSignal.timestamp !== '--') {
-          // Robust timestamp parser (e.g. "09:33 am" maps accurately to today's 09:30-09:35 candle)
+          // Robust timestamp parser (e.g. "09:33 am" maps accurately to the 09:30-09:35 candle)
           const match = activeSignal.timestamp.match(/(\d+):(\d+)\s*(am|pm)?/i);
           if (match) {
             let h = parseInt(match[1], 10);
@@ -399,8 +391,7 @@ export default function TradingChart({
             if (ampm === 'am' && h === 12) h = 0;
             const signalTotalMinutes = h * 60 + m;
 
-            entryIdx = formattedCandles.findIndex((c, idx) => {
-              if (idx < sessionStartIndex) return false;
+            entryIdx = formattedCandles.findIndex(c => {
               const cDate = new Date(c.time * 1000);
               const cH = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
               const cM = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', minute: 'numeric' }));
@@ -411,10 +402,10 @@ export default function TradingChart({
         }
 
         if (entryIdx === -1) {
-          entryIdx = formattedCandles.findIndex((c, idx) => idx >= sessionStartIndex && Math.abs(c.close - entryLinePrice) < (chartMode === 'OPTION' ? 4 : 8));
+          entryIdx = formattedCandles.findIndex(c => Math.abs(c.close - entryLinePrice) < (chartMode === 'OPTION' ? 4 : 8));
         }
         if (entryIdx === -1) {
-          entryIdx = Math.min(formattedCandles.length - 1, sessionStartIndex + 3);
+          entryIdx = formattedCandles.length > 3 ? 3 : 0; // Default to 09:30 AM (Candle 3), never 09:15 open
         }
 
         const badges = [];
@@ -429,8 +420,8 @@ export default function TradingChart({
             text: isMobileScreen
               ? (isCe ? '▲ BUY CALL' : '▼ BUY PUT')
               : (chartMode === 'OPTION'
-                  ? `BUY ENTRY @ ₹${badgeEntryPrice}`
-                  : (isCe ? `BUY CALL ENTRY @ ₹${badgeEntryPrice}` : `BUY PUT ENTRY @ ₹${badgeEntryPrice}`)),
+                ? `BUY ENTRY @ ₹${badgeEntryPrice}`
+                : (isCe ? `BUY CALL ENTRY @ ₹${badgeEntryPrice}` : `BUY PUT ENTRY @ ₹${badgeEntryPrice}`)),
             bgColor: isCe ? '#16a34a' : '#dc2626'
           });
         }
@@ -438,11 +429,8 @@ export default function TradingChart({
         // Determine exact Exit candle index (ONLY when trade is genuinely finalized as TARGET_HIT or SL_HIT)
         const isFinalizedOutcome = activeSignal.status === 'TARGET_HIT' || activeSignal.status === 'SL_HIT';
         let exitIdx = -1;
-        if (isFinalizedOutcome && typeof activeSignal.exitCandleIndex === 'number' && activeSignal.exitCandleIndex >= 0) {
-          const mappedExitIdx = sessionStartIndex + activeSignal.exitCandleIndex;
-          if (mappedExitIdx < formattedCandles.length) {
-            exitIdx = mappedExitIdx;
-          }
+        if (isFinalizedOutcome && typeof activeSignal.exitCandleIndex === 'number' && activeSignal.exitCandleIndex >= 0 && activeSignal.exitCandleIndex < formattedCandles.length) {
+          exitIdx = activeSignal.exitCandleIndex;
         }
 
         if (isFinalizedOutcome && exitIdx >= 0 && exitIdx > entryIdx && formattedCandles[exitIdx]) {
@@ -459,8 +447,8 @@ export default function TradingChart({
             text: isMobileScreen
               ? (isTargetHit ? `🎯 TGT HIT` : `🛑 SL HIT`)
               : (chartMode === 'OPTION'
-                  ? (isTargetHit ? `TARGET 1 HIT @ ₹${badgeExitPrice} (${pnlText})` : `STOP LOSS HIT @ ₹${badgeExitPrice} (${pnlText})`)
-                  : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`)),
+                ? (isTargetHit ? `TARGET 1 HIT @ ₹${badgeExitPrice} (${pnlText})` : `STOP LOSS HIT @ ₹${badgeExitPrice} (${pnlText})`)
+                : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`)),
             bgColor: isTargetHit ? '#16a34a' : '#dc2626'
           });
         }
@@ -510,7 +498,6 @@ export default function TradingChart({
   }, [
     chartMode,
     candles,
-    sessionStartIndex,
     showVWAP,
     activeSignal?.action,
     activeSignal?.strikeName,
@@ -535,28 +522,25 @@ export default function TradingChart({
             <button
               type="button"
               onClick={() => setChartMode('SPOT')}
-              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer ${
-                chartMode === 'SPOT'
-                  ? 'bg-white text-slate-900 shadow-2xs font-black'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer ${chartMode === 'SPOT'
+                ? 'bg-white text-slate-900 shadow-2xs font-black'
+                : 'text-slate-500 hover:text-slate-800'
+                }`}
             >
               {instrument === 'SENSEX' ? 'SENSEX SPOT' : 'NIFTY SPOT'}
             </button>
             <button
               type="button"
               onClick={() => setChartMode('OPTION')}
-              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${
-                chartMode === 'OPTION'
-                  ? (isCe ? 'bg-emerald-600 text-white shadow-2xs font-black' : 'bg-rose-600 text-white shadow-2xs font-black')
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${chartMode === 'OPTION'
+                ? (isCe ? 'bg-emerald-600 text-white shadow-2xs font-black' : 'bg-rose-600 text-white shadow-2xs font-black')
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${chartMode === 'OPTION' ? 'bg-white' : (isCe ? 'bg-emerald-500' : 'bg-rose-500')} animate-pulse`}></span>
               <span>{dynamicStrikeName}</span>
-              <span className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${
-                chartMode === 'OPTION' ? 'bg-black/25 text-white' : 'bg-slate-200 text-slate-700'
-              }`}>
+              <span className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${chartMode === 'OPTION' ? 'bg-black/25 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
                 {chartMode === 'OPTION' ? 'LIVE' : (isCe ? 'CE' : 'PE')}
               </span>
             </button>

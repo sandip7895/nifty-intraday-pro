@@ -535,13 +535,9 @@ export async function fetchLatestSession(instrumentKey = 'NIFTY') {
   const istTotalMins = istDateObj.getHours() * 60 + istDateObj.getMinutes();
   const isMarketHours = isWeekday && istTotalMins >= (9 * 60 + 15) && istTotalMins < (15 * 60 + 30);
   const isLiveSession = (latestDate === todayIST) && isMarketHours;
-
   const regularMarketTime = result?.meta?.regularMarketTime;
   const feedLagMinutes = regularMarketTime ? Math.max(0, Math.round((Date.now() / 1000 - regularMarketTime) / 60)) : 0;
   const isFeedDelayed = isMarketHours && (latestDate !== todayIST || feedLagMinutes >= 5);
-  const lastFeedTimeStr = regularMarketTime
-    ? new Date(regularMarketTime * 1000).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
-    : '';
   const sessionDisplayDate = new Date(latestDate + 'T09:15:00+05:30').toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -578,15 +574,12 @@ export async function fetchLatestSession(instrumentKey = 'NIFTY') {
 
   return {
     candles: currentSessionCandles,
-    prevCandles: prevDate !== latestDate ? prevSessionCandles : [],
     prevDay: prevDayLevels,
     confirmedTrade,
     latestDate,
     sessionDisplayDate,
     isLiveSession,
     isFeedDelayed,
-    feedLagMinutes,
-    lastFeedTimeStr,
     regularMarketPrice: liveMarketPrice || currentSessionCandles[currentSessionCandles.length - 1].close,
     instrument: config.id,
     lotSize: config.lotSize

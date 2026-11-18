@@ -20,7 +20,6 @@ export default function App() {
     instrument,
     selectInstrument,
     candles: liveCandles,
-    prevCandles,
     currentPrice: livePrice,
     priceChange: livePriceChange,
     priceChangePercent: livePriceChangePercent,
@@ -35,8 +34,6 @@ export default function App() {
     resetPaperAccount,
     isMarketOpen,
     isFeedDelayed,
-    feedLagMinutes,
-    lastFeedTimeStr,
     sessionDisplayDate,
     isLoading,
     error: apiError
@@ -49,17 +46,6 @@ export default function App() {
   // Active display data (live session or historical replay session)
   const isReplaying = Boolean(replayedDay);
   const activeCandles = isReplaying ? replayedDay.candles : liveCandles;
-
-  // Zerodha Kite / TradingView style morning context:
-  // When today's live session has < 25 candles (early morning), prepend previous day's last 35 candles
-  // so the chart never looks empty with 1-2 lonely candles floating in white space!
-  const prevContextCandles = (!isReplaying && liveCandles.length > 0 && liveCandles.length < 25 && prevCandles.length > 0)
-    ? prevCandles.slice(-35)
-    : [];
-  const chartCandles = prevContextCandles.length > 0
-    ? [...prevContextCandles, ...activeCandles]
-    : activeCandles;
-  const sessionStartIndex = prevContextCandles.length;
   const currentPrice = isReplaying
     ? (activeCandles.length > 0 ? activeCandles[activeCandles.length - 1].close : 0)
     : livePrice;
@@ -127,8 +113,8 @@ export default function App() {
           <button
             onClick={() => setMobileTab('all')}
             className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'all'
-                ? 'bg-white text-blue-600 font-extrabold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 font-medium'
+              ? 'bg-white text-blue-600 font-extrabold shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 font-medium'
               }`}
           >
             Overview
@@ -136,8 +122,8 @@ export default function App() {
           <button
             onClick={() => setMobileTab('chart')}
             className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'chart'
-                ? 'bg-white text-blue-600 font-extrabold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 font-medium'
+              ? 'bg-white text-blue-600 font-extrabold shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 font-medium'
               }`}
           >
             Chart
@@ -145,8 +131,8 @@ export default function App() {
           <button
             onClick={() => setMobileTab('signal')}
             className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'signal'
-                ? 'bg-white text-blue-600 font-extrabold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 font-medium'
+              ? 'bg-white text-blue-600 font-extrabold shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 font-medium'
               }`}
           >
             Trade Signal
@@ -154,8 +140,8 @@ export default function App() {
           <button
             onClick={() => setMobileTab('positions')}
             className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'positions'
-                ? 'bg-white text-blue-600 font-extrabold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 font-medium'
+              ? 'bg-white text-blue-600 font-extrabold shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 font-medium'
               }`}
           >
             Positions ({positions.length})
@@ -181,16 +167,13 @@ export default function App() {
           </div>
         )}
 
-        {/* Delayed Exchange Feed Banner (e.g. BSE SENSEX has 15-min delay on free Yahoo feed) */}
+        {/* Delayed Exchange Feed Banner (e.g. BSE SENSEX has 15-min opening delay on free Yahoo feed) */}
         {!isReplaying && isFeedDelayed && (
           <div className="bg-amber-50 border border-amber-200 text-amber-900 px-3 py-1.5 rounded-xl shadow-2xs flex items-center justify-between gap-2 shrink-0 text-xs">
             <div className="flex items-center gap-2 font-medium">
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
               <span>
-                <strong>{instrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'} Feed ~{Math.max(15, feedLagMinutes)}m Delayed:</strong>{' '}
-                {lastFeedTimeStr
-                  ? <>Last Exchange Tick: <strong>{lastFeedTimeStr}</strong> ({sessionDisplayDate}) — Free BSE feed lags ~15 mins behind live market.</>
-                  : <>Showing session <strong>{sessionDisplayDate || 'Yesterday'}</strong> while exchange feed updates.</>}
+                <strong>{instrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'} Feed 15-Min Delayed:</strong> Showing previous session (<strong>{sessionDisplayDate || 'Yesterday'}</strong>) until today&apos;s candles begin streaming (~09:30 AM).
               </span>
             </div>
             {instrument === 'SENSEX' && (
@@ -198,7 +181,7 @@ export default function App() {
                 onClick={() => selectInstrument('NIFTY')}
                 className="px-2.5 py-0.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-[11px] font-bold transition shrink-0 cursor-pointer"
               >
-                Switch to 0-Delay NIFTY 50
+                Switch to Live NIFTY 50
               </button>
             )}
           </div>
@@ -215,8 +198,7 @@ export default function App() {
             } min-h-0`}>
             <TradingChart
               instrument={isReplaying ? (replayedDay.trade.strike?.includes('SENSEX') ? 'SENSEX' : 'NIFTY') : instrument}
-              candles={chartCandles}
-              sessionStartIndex={sessionStartIndex}
+              candles={activeCandles}
               cpr={liveCpr}
               currentVWAP={currentVWAP}
               currentPrice={currentPrice}
@@ -288,9 +270,8 @@ export default function App() {
         {/* Tab 4: Positions */}
         <button
           onClick={() => setMobileTab('positions')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer relative ${
-            mobileTab === 'positions' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
-          }`}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer relative ${mobileTab === 'positions' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
+            }`}
         >
           <Briefcase className="w-5 h-5 mb-0.5" />
           <span className="text-[10px] tracking-tight">Positions</span>
@@ -301,14 +282,14 @@ export default function App() {
           )}
         </button>
 
-      {/* Tab 5: Backtest Report */}
-      <button
-        onClick={() => setIsBacktestModalOpen(true)}
-        className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 font-medium transition cursor-pointer"
-      >
-        <Database className="w-5 h-5 mb-0.5" />
-        <span className="text-[10px] tracking-tight">Report</span>
-      </button>
+        {/* Tab 5: Backtest Report */}
+        <button
+          onClick={() => setIsBacktestModalOpen(true)}
+          className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 font-medium transition cursor-pointer"
+        >
+          <Database className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] tracking-tight">Report</span>
+        </button>
 
       </nav>
 

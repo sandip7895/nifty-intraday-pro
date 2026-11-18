@@ -113,7 +113,7 @@ export default function BacktestModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 overflow-hidden">
       <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl p-3 sm:p-4.5 max-h-[84dvh] sm:max-h-[88vh] flex flex-col overflow-hidden my-auto">
-        
+
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -149,22 +149,20 @@ export default function BacktestModal({
               <button
                 type="button"
                 onClick={() => handleInstrumentSwitch('NIFTY')}
-                className={`px-2 py-1 text-[10px] sm:text-xs font-black rounded transition cursor-pointer ${
-                  selectedInstrument === 'NIFTY'
+                className={`px-2 py-1 text-[10px] sm:text-xs font-black rounded transition cursor-pointer ${selectedInstrument === 'NIFTY'
                     ? 'bg-blue-600 text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 NIFTY 50
               </button>
               <button
                 type="button"
                 onClick={() => handleInstrumentSwitch('SENSEX')}
-                className={`px-2 py-1 text-[10px] sm:text-xs font-black rounded transition cursor-pointer ${
-                  selectedInstrument === 'SENSEX'
+                className={`px-2 py-1 text-[10px] sm:text-xs font-black rounded transition cursor-pointer ${selectedInstrument === 'SENSEX'
                     ? 'bg-purple-600 text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 SENSEX
               </button>
@@ -186,7 +184,7 @@ export default function BacktestModal({
         {!isLoading && allSessionsData.length > 0 && (
           <div className="mb-2 shrink-0 bg-slate-50 border border-slate-200/90 rounded-xl p-1.5 sm:p-2 shadow-2xs">
             <div className="flex items-center justify-between gap-1 flex-wrap">
-              
+
               {/* Presets */}
               <div className="flex items-center gap-1">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1 hidden xs:inline">
@@ -205,11 +203,10 @@ export default function BacktestModal({
                       setShowCustomPicker(false);
                       applyFilter(p.id, startDate, endDate, allSessionsData, selectedInstrument);
                     }}
-                    className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${
-                      datePreset === p.id && !showCustomPicker
+                    className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${datePreset === p.id && !showCustomPicker
                         ? 'bg-[#387ed1] text-white shadow-2xs'
                         : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     {p.label}
                   </button>
@@ -221,11 +218,10 @@ export default function BacktestModal({
                     setShowCustomPicker(next);
                     if (next) setDatePreset('custom');
                   }}
-                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                    showCustomPicker || datePreset === 'custom'
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${showCustomPicker || datePreset === 'custom'
                       ? 'bg-[#387ed1] text-white shadow-2xs'
                       : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   <Calendar className="w-3 h-3" />
                   <span>Custom Date</span>
@@ -312,10 +308,10 @@ export default function BacktestModal({
         {/* Backtest Statistics - Sleek Compact Integrated Bar */}
         {!isLoading && backtestResult && (
           <div className="space-y-2 sm:space-y-3 flex-1 min-h-0 flex flex-col overflow-hidden">
-            
+
             {/* Integrated Compact Stats Bar */}
             <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-1.5 sm:p-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 shrink-0 shadow-2xs">
-              
+
               {/* Stat 1: Total Trades */}
               <div className="px-2 sm:px-3 py-1 flex flex-col justify-center">
                 <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block truncate">
@@ -422,11 +418,10 @@ export default function BacktestModal({
                           </td>
 
                           <td className="py-2 px-3">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${
-                              trade.type === 'BUY_CE' 
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80' 
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${trade.type === 'BUY_CE'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
                                 : 'bg-rose-50 text-rose-800 border-rose-200/80'
-                            }`}>
+                              }`}>
                               {trade.type === 'BUY_CE' ? 'CALL' : 'PUT'}
                             </span>
                             <span className="ml-1.5 font-bold text-slate-800">{trade.strike}</span>
