@@ -19,7 +19,8 @@ export default function Navbar({
   paperBalance,
   onResetFund,
   onOpenBacktest,
-  isMarketOpen
+  isMarketOpen,
+  isFeedDelayed = false
 }) {
   const isUp = priceChange >= 0;
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -127,9 +128,19 @@ export default function Navbar({
 
           {/* Market Status Dot */}
           <div className="items-center gap-1 text-[10px] text-slate-500 pl-1 border-l border-slate-200 hidden lg:flex shrink-0">
-            <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
-            <span className="text-[10px] uppercase font-bold text-slate-600">
-              {isMarketOpen ? (selectedInstrument === 'SENSEX' ? 'BSE Live' : 'NSE Live') : 'Closed'}
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              isFeedDelayed
+                ? 'bg-amber-500 animate-pulse'
+                : isMarketOpen
+                  ? 'bg-emerald-500 animate-pulse'
+                  : 'bg-slate-400'
+            }`}></span>
+            <span className={`text-[10px] uppercase font-bold ${isFeedDelayed ? 'text-amber-700' : 'text-slate-600'}`}>
+              {isFeedDelayed
+                ? `${selectedInstrument === 'SENSEX' ? 'BSE' : 'NSE'} 15m Delayed`
+                : isMarketOpen
+                  ? (selectedInstrument === 'SENSEX' ? 'BSE Live' : 'NSE Live')
+                  : 'Closed'}
             </span>
           </div>
 

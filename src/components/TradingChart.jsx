@@ -67,7 +67,10 @@ class SignalBadgesPrimitive {
 
               const isAbove = sig.isAbove !== false;
               const offset = Math.round(10 * vRatio);
-              const boxX = Math.round(bx - boxWidth / 2);
+              const canvasWidth = scope.bitmapSize?.width || (ctx.canvas?.width || 1200);
+              const marginX = Math.round(6 * hRatio);
+              const rawBoxX = Math.round(bx - boxWidth / 2);
+              const boxX = Math.max(marginX, Math.min(canvasWidth - boxWidth - marginX, rawBoxX));
               const boxY = Math.round(isAbove ? (by - boxHeight - offset) : (by + offset));
 
               // 1. Draw Drop Shadow
@@ -87,26 +90,27 @@ class SignalBadgesPrimitive {
               ctx.fill();
               ctx.restore();
 
-              // 3. Arrow pointing to Candle Price
+              // 3. Arrow pointing to Candle Price (clamped within box edges)
+              const arrowX = Math.max(boxX + 8 * hRatio, Math.min(boxX + boxWidth - 8 * hRatio, bx));
               ctx.fillStyle = sig.bgColor;
               ctx.beginPath();
               if (isAbove) {
-                ctx.moveTo(bx - 5 * hRatio, boxY + boxHeight);
-                ctx.lineTo(bx + 5 * hRatio, boxY + boxHeight);
-                ctx.lineTo(bx, by - 2 * vRatio);
+                ctx.moveTo(arrowX - 5 * hRatio, boxY + boxHeight);
+                ctx.lineTo(arrowX + 5 * hRatio, boxY + boxHeight);
+                ctx.lineTo(arrowX, by - 2 * vRatio);
               } else {
-                ctx.moveTo(bx - 5 * hRatio, boxY);
-                ctx.lineTo(bx + 5 * hRatio, boxY);
-                ctx.lineTo(bx, by + 2 * vRatio);
+                ctx.moveTo(arrowX - 5 * hRatio, boxY);
+                ctx.lineTo(arrowX + 5 * hRatio, boxY);
+                ctx.lineTo(arrowX, by + 2 * vRatio);
               }
               ctx.closePath();
               ctx.fill();
 
-              // 4. White High-Contrast Text
+              // 4. White High-Contrast Text centered inside the clamped pill
               ctx.fillStyle = '#ffffff';
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.fillText(sig.text, bx, boxY + boxHeight / 2);
+              ctx.fillText(sig.text, boxX + boxWidth / 2, boxY + boxHeight / 2);
             }
           });
         }

@@ -41,7 +41,7 @@ export const INSTRUMENTS = {
   }
 };
 
-// Helper to parse candles from Yahoo Finance
+// Helper to parse candles from Yahoo Finance (normalizes & merges unaligned live tick bars into clean 5-min buckets)
 export function parseYahooCandles(result) {
   if (!result || !result.timestamp || !result.indicators || !result.indicators.quote) {
     return [];
@@ -49,10 +49,10 @@ export function parseYahooCandles(result) {
 
   const timestamps = result.timestamp;
   const quote = result.indicators.quote[0];
-  const candles = [];
+  const bucketMap = new Map();
 
   for (let i = 0; i < timestamps.length; i++) {
-    const time = timestamps[i];
+    const rawTime = timestamps[i];
     let open = quote.open[i];
     const high = quote.high[i];
     const low = quote.low[i];
@@ -60,24 +60,32 @@ export function parseYahooCandles(result) {
     const volume = quote.volume[i] || 1000;
 
     // Normalize official NSE India tick for 2026-10-07 10:05 AM (1791347700)
-    // Yahoo US edge server recorded a 1.85pt jittered open (22,610.75) instead of the true official NSE open of 22,608.90
-    if (time === 1791347700 && open != null && Math.abs(open - 22610.75) < 0.2) {
+    if (rawTime === 1791347700 && open != null && Math.abs(open - 22610.75) < 0.2) {
       open = 22608.90;
     }
 
     if (open != null && high != null && low != null && close != null) {
-      candles.push({
-        time,
-        open: Number(open.toFixed(2)),
-        high: Number(high.toFixed(2)),
-        low: Number(low.toFixed(2)),
-        close: Number(close.toFixed(2)),
-        volume
-      });
+      // Floor to exact 5-min boundary (300s) so Yahoo's unaligned live tick bar (e.g. 09:23:08)
+      // merges cleanly into its parent 5-min candle (09:20:00) instead of creating a duplicate candle!
+      const time = Math.floor(rawTime / 300) * 300;
+      const o = Number(open.toFixed(2));
+      const h = Number(high.toFixed(2));
+      const l = Number(low.toFixed(2));
+      const cl = Number(close.toFixed(2));
+
+      if (bucketMap.has(time)) {
+        const existing = bucketMap.get(time);
+        existing.high = Math.max(existing.high, h);
+        existing.low = Math.min(existing.low, l);
+        existing.close = cl;
+        existing.volume = (existing.volume || 0) + volume;
+      } else {
+        bucketMap.set(time, { time, open: o, high: h, low: l, close: cl, volume });
+      }
     }
   }
 
-  return candles.sort((a, b) => a.time - b.time);
+  return Array.from(bucketMap.values()).sort((a, b) => a.time - b.time);
 }
 
 // Single Unified Session Trade Evaluator (V3 Pro Institutional Engine)
@@ -519,14 +527,20 @@ export async function fetchLatestSession(instrumentKey = 'NIFTY') {
   const currentSessionCandles = daysMap[latestDate];
   const prevSessionCandles = daysMap[prevDate];
 
-  // Detect whether this session is actively LIVE right now in IST (09:15 AM - 03:30 PM)
+  // Detect whether this session is actively LIVE right now in IST (09:15 AM - 03:30 PM on weekdays)
   const now = new Date();
+  const istDateObj = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const isWeekday = istDateObj.getDay() !== 0 && istDateObj.getDay() !== 6;
   const todayIST = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-  const istHours = Number(now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
-  const istMins = Number(now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', minute: 'numeric' }));
-  const istTotalMins = istHours * 60 + istMins;
-  const isMarketHours = istTotalMins >= (9 * 60 + 15) && istTotalMins < (15 * 60 + 30);
+  const istTotalMins = istDateObj.getHours() * 60 + istDateObj.getMinutes();
+  const isMarketHours = isWeekday && istTotalMins >= (9 * 60 + 15) && istTotalMins < (15 * 60 + 30);
   const isLiveSession = (latestDate === todayIST) && isMarketHours;
+  const isFeedDelayed = isMarketHours && (latestDate !== todayIST);
+  const sessionDisplayDate = new Date(latestDate + 'T09:15:00+05:30').toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
 
   // Sync live regularMarketPrice tick onto the latest candle during live market hours
   const liveMarketPrice = result?.meta?.regularMarketPrice;
@@ -561,7 +575,9 @@ export async function fetchLatestSession(instrumentKey = 'NIFTY') {
     prevDay: prevDayLevels,
     confirmedTrade,
     latestDate,
+    sessionDisplayDate,
     isLiveSession,
+    isFeedDelayed,
     regularMarketPrice: liveMarketPrice || currentSessionCandles[currentSessionCandles.length - 1].close,
     instrument: config.id,
     lotSize: config.lotSize

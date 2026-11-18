@@ -33,6 +33,8 @@ export default function App() {
     closePositionManually,
     resetPaperAccount,
     isMarketOpen,
+    isFeedDelayed,
+    sessionDisplayDate,
     isLoading,
     error: apiError
   } = useTradingSimulation();
@@ -100,6 +102,7 @@ export default function App() {
         onResetFund={resetPaperAccount}
         onOpenBacktest={() => setIsBacktestModalOpen(true)}
         isMarketOpen={isMarketOpen}
+        isFeedDelayed={isFeedDelayed && !isReplaying}
       />
 
       {/* Main Dashboard Container */}
@@ -161,6 +164,26 @@ export default function App() {
               <RotateCcw className="w-3 h-3" />
               <span>Return to Real Session</span>
             </button>
+          </div>
+        )}
+
+        {/* Delayed Exchange Feed Banner (e.g. BSE SENSEX has 15-min opening delay on free Yahoo feed) */}
+        {!isReplaying && isFeedDelayed && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 px-3 py-1.5 rounded-xl shadow-2xs flex items-center justify-between gap-2 shrink-0 text-xs">
+            <div className="flex items-center gap-2 font-medium">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+              <span>
+                <strong>{instrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'} Feed 15-Min Delayed:</strong> Showing previous session (<strong>{sessionDisplayDate || 'Yesterday'}</strong>) until today&apos;s candles begin streaming (~09:30 AM).
+              </span>
+            </div>
+            {instrument === 'SENSEX' && (
+              <button
+                onClick={() => selectInstrument('NIFTY')}
+                className="px-2.5 py-0.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-[11px] font-bold transition shrink-0 cursor-pointer"
+              >
+                Switch to Live NIFTY 50
+              </button>
+            )}
           </div>
         )}
 

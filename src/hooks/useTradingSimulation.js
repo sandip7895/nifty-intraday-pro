@@ -60,6 +60,8 @@ export function useTradingSimulation() {
   const [prevDay, setPrevDay] = useState(null);
   const [confirmedTrade, setConfirmedTrade] = useState(null);
   const [isMarketOpen, setIsMarketOpen] = useState(checkIsMarketOpen());
+  const [isFeedDelayed, setIsFeedDelayed] = useState(false);
+  const [sessionDisplayDate, setSessionDisplayDate] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -84,6 +86,8 @@ export function useTradingSimulation() {
       if (data && data.candles && data.candles.length > 0) {
         setCandles(data.candles);
         setPrevDay(data.prevDay);
+        setIsFeedDelayed(Boolean(data.isFeedDelayed));
+        setSessionDisplayDate(data.sessionDisplayDate || '');
 
         let finalTrade = data.confirmedTrade;
 
@@ -408,6 +412,8 @@ export function useTradingSimulation() {
     closePositionManually,
     resetPaperAccount,
     isMarketOpen,
+    isFeedDelayed,
+    sessionDisplayDate,
     isLoading,
     error,
     refreshData: () => loadRealMarketData(instrument)
