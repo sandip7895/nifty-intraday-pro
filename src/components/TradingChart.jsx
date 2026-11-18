@@ -216,6 +216,9 @@ export default function TradingChart({
         borderColor: '#cbd5e1',
         timeVisible: true,
         secondsVisible: false,
+        barSpacing: 12,
+        minBarSpacing: 4,
+        rightOffset: 6,
         tickMarkFormatter: (time, tickMarkType) => {
           const timestamp = typeof time === 'number' ? time : (time?.timestamp || time);
           if (!timestamp) return null;
@@ -451,7 +454,16 @@ export default function TradingChart({
         }
       }
 
-      chart.timeScale().fitContent();
+      if (formattedCandles.length >= 25) {
+        chart.timeScale().fitContent();
+      } else {
+        // Early morning session (few candles): keep crisp normal candlestick width instead of stretching 1-2 candles across the whole chart
+        chart.timeScale().applyOptions({
+          barSpacing: 14,
+          rightOffset: Math.max(12, 40 - formattedCandles.length)
+        });
+        chart.timeScale().scrollToRealTime();
+      }
     }
 
     chartRef.current = chart;
