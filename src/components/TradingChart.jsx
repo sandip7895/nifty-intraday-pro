@@ -419,13 +419,14 @@ export default function TradingChart({
           });
         }
 
-        // Determine exact Exit candle index
+        // Determine exact Exit candle index (ONLY when trade is genuinely finalized as TARGET_HIT or SL_HIT)
+        const isFinalizedOutcome = activeSignal.status === 'TARGET_HIT' || activeSignal.status === 'SL_HIT';
         let exitIdx = -1;
-        if (typeof activeSignal.exitCandleIndex === 'number' && activeSignal.exitCandleIndex >= 0 && activeSignal.exitCandleIndex < formattedCandles.length) {
+        if (isFinalizedOutcome && typeof activeSignal.exitCandleIndex === 'number' && activeSignal.exitCandleIndex >= 0 && activeSignal.exitCandleIndex < formattedCandles.length) {
           exitIdx = activeSignal.exitCandleIndex;
         }
 
-        if (exitIdx >= 0 && exitIdx > entryIdx && formattedCandles[exitIdx]) {
+        if (isFinalizedOutcome && exitIdx >= 0 && exitIdx > entryIdx && formattedCandles[exitIdx]) {
           const exitCandle = formattedCandles[exitIdx];
           const isTargetHit = activeSignal.status === 'TARGET_HIT' || activeSignal.result?.includes('Target');
           const isSlHit = activeSignal.status === 'SL_HIT' || activeSignal.result?.includes('Stop Loss');

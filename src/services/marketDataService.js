@@ -86,12 +86,14 @@ export function parseYahooCandles(result) {
 // 2. 15-Min Opening Range Breakout (ORB)
 // 3. 9/21/50 EMA Institutional Ribbon on Spot
 // 4. High-Accuracy 18% Target 1 vs 14% SL
-export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumentKey = 'NIFTY') {
+// 5. Non-Repainting Live Session Engine (isLiveSession = true prevents premature EOD close & unclosed candle flicker)
+export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumentKey = 'NIFTY', isLiveSession = false) {
   if (!currentDayCandles || currentDayCandles.length < 4) {
     return null;
   }
 
   const config = INSTRUMENTS[instrumentKey] || INSTRUMENTS.NIFTY;
+  const nowSec = Math.floor(Date.now() / 1000);
 
   const prevH = prevDayLevels?.high || Math.max(...currentDayCandles.map(c => c.high));
   const prevL = prevDayLevels?.low || Math.min(...currentDayCandles.map(c => c.low));
@@ -138,6 +140,17 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
   for (let i = 3; i < currentDayCandles.length; i++) {
     const c = currentDayCandles[i];
     const prevC = currentDayCandles[i - 1];
+
+    // LIVE MARKET NON-REPAINTING GUARD:
+    // On the currently forming last 5-min candle, wait at least 3 minutes (180s)
+    // before evaluating confirmation so early tick noise cannot cause signal flickering!
+    if (isLiveSession && i === currentDayCandles.length - 1) {
+      const candleAgeSec = nowSec - c.time;
+      if (candleAgeSec >= 0 && candleAgeSec < 180) {
+        continue;
+      }
+    }
+
     const ema9 = ema9Arr[i];
     const ema21 = ema21Arr[i];
     const rsi = rsiSeries[i] || 50;
@@ -160,43 +173,37 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
       const isStrongBody = (candleBody / candleRange) >= 0.45; // Eliminates indecisive doji/wick traps
 
       // 1. BEARISH PUT SETUP (Protected against early morning false dumps):
-      // - Price < 9 EMA AND 9 EMA <= 21 EMA (Trend alignment down)
-      // - Price < Day Open (STRICT RULE: Never short when price is above day open!)
-      // - Strong red body
-      // - Breakdown below 15-Min ORB Low OR CPR breakdown OR rejected from EMA 9
-      // - ADX >= 18 (trend strength confirmation)
-      // - RSI in healthy selling momentum zone (RSI <= 55)
       const isBearishBreak = c.close < ema9 && c.close < dayOpen && c.close < c.open && isStrongBody &&
         (c.close < orbLow || c.close < cprBottom || prevC.close >= ema9) &&
         rsi <= 55 && adx >= 18;
 
       // 2. BULLISH CALL SETUP (Protected against early morning false breakouts):
-      // - Price > 9 EMA AND 9 EMA >= 21 EMA (Trend alignment up)
-      // - Price > Day Open (STRICT RULE: Never buy calls when price is below day open!)
-      // - Strong green body
-      // - Breakout above 15-Min ORB High OR CPR breakout OR bounced from EMA 9
-      // - ADX >= 18 (trend strength confirmation)
-      // - RSI in healthy buying momentum zone (RSI >= 45)
       const isBullishBreak = c.close > ema9 && c.close > dayOpen && c.close > c.open && isStrongBody &&
         (c.close > orbHigh || c.close > cprTop || prevC.close <= ema9) &&
         rsi >= 45 && adx >= 18;
 
+      // In live market, if the signal triggers right now on the current/just-closed bar,
+      // enter at the ACTUAL live price (c.close) so the trader gets a real executable entry,
+      // NOT a backdated price from minutes ago that makes Target 1 look already hit!
+      const isFreshLiveTrigger = isLiveSession && (i >= currentDayCandles.length - 2);
+
       if (isBearishBreak) {
-        // 3-Minute Fast Execution Rule (NIFTY & SENSEX):
-        // In 5-min candles, 3-minute confirmation occurs 3 minutes into the candle.
-        // E.g. for candle 3 (09:30 AM), 3-min close is at 09:33 AM.
-        // Instead of waiting for the full 5-min close at 09:35, entry is executed at the 3-min confirmed level!
-        const spotEntry = Number((c.open - (c.open - c.close) * 0.45).toFixed(2));
+        const spotEntry = isFreshLiveTrigger
+          ? Number(c.close.toFixed(2))
+          : Number((c.open - (c.open - c.close) * 0.45).toFixed(2));
         const spotDiscount = Math.abs(c.close - spotEntry);
         const optDiscount = Number((spotDiscount * config.delta).toFixed(1));
-        const entryPrice = Math.max(50, Number((config.defaultPeEntry - optDiscount).toFixed(1)));
+        const entryPrice = isFreshLiveTrigger
+          ? config.defaultPeEntry
+          : Math.max(50, Number((config.defaultPeEntry - optDiscount).toFixed(1)));
         const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
         const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
         const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
         const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
 
-        // 3-minute entry timestamp (e.g. 09:33 AM)
-        const entryDate = new Date((c.time + 180) * 1000);
+        const entryDate = (isLiveSession && i === currentDayCandles.length - 1)
+          ? new Date()
+          : new Date((c.time + 180) * 1000);
         const entryTimeStr = entryDate.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
         triggeredTrade = {
@@ -207,6 +214,7 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           lotSize: config.lotSize,
           spotEntry,
           entryPrice,
+          currentOptPrice: entryPrice,
           target1,
           target2,
           sl,
@@ -215,6 +223,11 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           rawDate: date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
           date: date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
           status: 'OPEN',
+          result: null,
+          exitCandleIndex: -1,
+          exitPrice: entryPrice,
+          pnl: 0,
+          accuracy: 88,
           rsi: Number(rsi.toFixed(1)),
           adx: Number(adx.toFixed(1)),
           supertrend: stTrend === 1 ? 'BULLISH' : 'BEARISH',
@@ -223,18 +236,22 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
         };
         break; // Lock day's primary setup
       } else if (isBullishBreak) {
-        // 3-Minute Fast Execution Rule (NIFTY & SENSEX):
-        const spotEntry = Number((c.open + (c.close - c.open) * 0.45).toFixed(2));
+        const spotEntry = isFreshLiveTrigger
+          ? Number(c.close.toFixed(2))
+          : Number((c.open + (c.close - c.open) * 0.45).toFixed(2));
         const spotDiscount = Math.abs(c.close - spotEntry);
         const optDiscount = Number((spotDiscount * config.delta).toFixed(1));
-        const entryPrice = Math.max(50, Number((config.defaultCeEntry - optDiscount).toFixed(1)));
+        const entryPrice = isFreshLiveTrigger
+          ? config.defaultCeEntry
+          : Math.max(50, Number((config.defaultCeEntry - optDiscount).toFixed(1)));
         const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
         const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
         const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
         const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
 
-        // 3-minute entry timestamp (e.g. 09:33 AM)
-        const entryDate = new Date((c.time + 180) * 1000);
+        const entryDate = (isLiveSession && i === currentDayCandles.length - 1)
+          ? new Date()
+          : new Date((c.time + 180) * 1000);
         const entryTimeStr = entryDate.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
 
         triggeredTrade = {
@@ -245,6 +262,7 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           lotSize: config.lotSize,
           spotEntry,
           entryPrice,
+          currentOptPrice: entryPrice,
           target1,
           target2,
           sl,
@@ -253,6 +271,11 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
           rawDate: date.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }),
           date: date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
           status: 'OPEN',
+          result: null,
+          exitCandleIndex: -1,
+          exitPrice: entryPrice,
+          pnl: 0,
+          accuracy: 88,
           rsi: Number(rsi.toFixed(1)),
           adx: Number(adx.toFixed(1)),
           supertrend: stTrend === 1 ? 'BULLISH' : 'BEARISH',
@@ -269,19 +292,27 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
     const isCe = triggeredTrade.type === 'BUY_CE';
     let outcome = 'OPEN';
     let exitPrice = triggeredTrade.entryPrice;
-    let exitCandleIndex = currentDayCandles.length - 1;
+    let currentOptPrice = triggeredTrade.entryPrice;
+    let exitCandleIndex = -1;
     let pnl = 0;
 
-    for (let k = triggeredTrade.entryCandleIndex; k < currentDayCandles.length; k++) {
+    // In LIVE mode, only evaluate Target/SL on candles AFTER the entry candle (k = entryCandleIndex + 1)
+    // so an earlier wick inside the entry candle NEVER falsely triggers instant "Target Achieved"!
+    const startEvalIdx = isLiveSession
+      ? triggeredTrade.entryCandleIndex + 1
+      : triggeredTrade.entryCandleIndex;
+
+    for (let k = startEvalIdx; k < currentDayCandles.length; k++) {
       const kc = currentDayCandles[k];
 
       const bestSpotDelta = isCe ? (kc.high - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.low);
       const worstSpotDelta = isCe ? (kc.low - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.high);
       const closeSpotDelta = isCe ? (kc.close - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.close);
 
-      const maxOptPrice = Number((triggeredTrade.entryPrice + bestSpotDelta * config.delta).toFixed(1));
-      const minOptPrice = Number((triggeredTrade.entryPrice + worstSpotDelta * config.delta).toFixed(1));
-      const closeOptPrice = Number((triggeredTrade.entryPrice + closeSpotDelta * config.delta).toFixed(1));
+      const maxOptPrice = Number(Math.max(1, triggeredTrade.entryPrice + bestSpotDelta * config.delta).toFixed(1));
+      const minOptPrice = Number(Math.max(1, triggeredTrade.entryPrice + worstSpotDelta * config.delta).toFixed(1));
+      const closeOptPrice = Number(Math.max(1, triggeredTrade.entryPrice + closeSpotDelta * config.delta).toFixed(1));
+      currentOptPrice = closeOptPrice;
 
       const isTargetReached = maxOptPrice >= triggeredTrade.target1;
       const isSlBreached = minOptPrice <= triggeredTrade.sl;
@@ -313,29 +344,154 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
         }
         break;
       } else if (k === currentDayCandles.length - 1) {
-        outcome = closeOptPrice >= triggeredTrade.entryPrice ? 'TARGET_HIT' : 'SL_HIT';
-        exitPrice = closeOptPrice;
-        exitCandleIndex = k;
-        pnl = Number(((closeOptPrice - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
+        if (!isLiveSession) {
+          // Historical / EOD session: square off at market close
+          outcome = closeOptPrice >= triggeredTrade.entryPrice ? 'TARGET_HIT' : 'SL_HIT';
+          exitPrice = closeOptPrice;
+          exitCandleIndex = k;
+          pnl = Number(((closeOptPrice - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
+        } else {
+          // LIVE session: trade is STILL OPEN — never falsely mark as Target Achieved or SL Hit!
+          outcome = 'OPEN';
+          exitPrice = closeOptPrice;
+          exitCandleIndex = -1;
+          pnl = Number(((closeOptPrice - triggeredTrade.entryPrice) * config.lotSize).toFixed(2));
+        }
         break;
       }
     }
 
     triggeredTrade.status = outcome;
     triggeredTrade.exitPrice = exitPrice;
+    triggeredTrade.currentOptPrice = outcome === 'OPEN' ? currentOptPrice : exitPrice;
     triggeredTrade.exitCandleIndex = exitCandleIndex;
     triggeredTrade.pnl = pnl;
-    triggeredTrade.result = outcome === 'TARGET_HIT' ? 'Target 1 Achieved (+18%)' : 'SL Hit (-14%)';
-    triggeredTrade.accuracy = outcome === 'TARGET_HIT' ? 90 : 50;
+    if (outcome === 'TARGET_HIT') {
+      triggeredTrade.result = 'Target 1 Achieved (+18%)';
+      triggeredTrade.accuracy = 90;
+    } else if (outcome === 'SL_HIT') {
+      triggeredTrade.result = 'SL Hit (-14%)';
+      triggeredTrade.accuracy = 50;
+    } else {
+      triggeredTrade.result = null;
+      triggeredTrade.accuracy = 88;
+    }
   }
 
   return triggeredTrade;
 }
 
+// Update a LOCKED live signal with fresh candles & real-time spot price without ever repainting/removing it
+export function updateLockedTradeStatus(lockedTrade, currentDayCandles, liveSpotPrice, instrumentKey = 'NIFTY') {
+  if (!lockedTrade || !currentDayCandles || currentDayCandles.length === 0) return lockedTrade;
+  // Once Target or SL is genuinely hit and locked, keep it finalized
+  if (lockedTrade.status === 'TARGET_HIT' || lockedTrade.status === 'SL_HIT') {
+    return lockedTrade;
+  }
+
+  const config = INSTRUMENTS[instrumentKey] || INSTRUMENTS.NIFTY;
+  const isCe = lockedTrade.type === 'BUY_CE';
+  const startIdx = Math.max(0, (lockedTrade.entryCandleIndex ?? 3) + 1);
+
+  for (let k = startIdx; k < currentDayCandles.length; k++) {
+    const kc = currentDayCandles[k];
+    const bestSpotDelta = isCe ? (kc.high - lockedTrade.spotEntry) : (lockedTrade.spotEntry - kc.low);
+    const worstSpotDelta = isCe ? (kc.low - lockedTrade.spotEntry) : (lockedTrade.spotEntry - kc.high);
+    const closeSpotDelta = isCe ? (kc.close - lockedTrade.spotEntry) : (lockedTrade.spotEntry - kc.close);
+
+    const maxOptPrice = Number(Math.max(1, lockedTrade.entryPrice + bestSpotDelta * config.delta).toFixed(1));
+    const minOptPrice = Number(Math.max(1, lockedTrade.entryPrice + worstSpotDelta * config.delta).toFixed(1));
+    const closeOptPrice = Number(Math.max(1, lockedTrade.entryPrice + closeSpotDelta * config.delta).toFixed(1));
+
+    const isTargetReached = maxOptPrice >= lockedTrade.target1;
+    const isSlBreached = minOptPrice <= lockedTrade.sl;
+
+    if (isTargetReached && !isSlBreached) {
+      return {
+        ...lockedTrade,
+        status: 'TARGET_HIT',
+        exitPrice: lockedTrade.target1,
+        currentOptPrice: lockedTrade.target1,
+        exitCandleIndex: k,
+        pnl: Number(((lockedTrade.target1 - lockedTrade.entryPrice) * config.lotSize).toFixed(2)),
+        result: 'Target 1 Achieved (+18%)',
+        accuracy: 90
+      };
+    } else if (isSlBreached && !isTargetReached) {
+      return {
+        ...lockedTrade,
+        status: 'SL_HIT',
+        exitPrice: lockedTrade.sl,
+        currentOptPrice: lockedTrade.sl,
+        exitCandleIndex: k,
+        pnl: Number(((lockedTrade.sl - lockedTrade.entryPrice) * config.lotSize).toFixed(2)),
+        result: 'SL Hit (-14%)',
+        accuracy: 50
+      };
+    } else if (isTargetReached && isSlBreached) {
+      const won = closeOptPrice >= lockedTrade.target1;
+      const finalExit = won ? lockedTrade.target1 : lockedTrade.sl;
+      return {
+        ...lockedTrade,
+        status: won ? 'TARGET_HIT' : 'SL_HIT',
+        exitPrice: finalExit,
+        currentOptPrice: finalExit,
+        exitCandleIndex: k,
+        pnl: Number(((finalExit - lockedTrade.entryPrice) * config.lotSize).toFixed(2)),
+        result: won ? 'Target 1 Achieved (+18%)' : 'SL Hit (-14%)',
+        accuracy: won ? 90 : 50
+      };
+    }
+  }
+
+  // Still OPEN: check latest live spot price tick
+  const spotNow = liveSpotPrice || currentDayCandles[currentDayCandles.length - 1].close;
+  const liveSpotDelta = isCe ? (spotNow - lockedTrade.spotEntry) : (lockedTrade.spotEntry - spotNow);
+  const liveOptPrice = Number(Math.max(1, lockedTrade.entryPrice + liveSpotDelta * config.delta).toFixed(1));
+  const livePnl = Number(((liveOptPrice - lockedTrade.entryPrice) * config.lotSize).toFixed(2));
+
+  if (liveOptPrice >= lockedTrade.target1) {
+    return {
+      ...lockedTrade,
+      status: 'TARGET_HIT',
+      exitPrice: lockedTrade.target1,
+      currentOptPrice: lockedTrade.target1,
+      exitCandleIndex: currentDayCandles.length - 1,
+      pnl: Number(((lockedTrade.target1 - lockedTrade.entryPrice) * config.lotSize).toFixed(2)),
+      result: 'Target 1 Achieved (+18%)',
+      accuracy: 90
+    };
+  }
+  if (liveOptPrice <= lockedTrade.sl) {
+    return {
+      ...lockedTrade,
+      status: 'SL_HIT',
+      exitPrice: lockedTrade.sl,
+      currentOptPrice: lockedTrade.sl,
+      exitCandleIndex: currentDayCandles.length - 1,
+      pnl: Number(((lockedTrade.sl - lockedTrade.entryPrice) * config.lotSize).toFixed(2)),
+      result: 'SL Hit (-14%)',
+      accuracy: 50
+    };
+  }
+
+  return {
+    ...lockedTrade,
+    status: 'OPEN',
+    result: null,
+    exitCandleIndex: -1,
+    currentOptPrice: liveOptPrice,
+    exitPrice: liveOptPrice,
+    pnl: livePnl
+  };
+}
+
 // Fetch Latest Real Session (for NIFTY or SENSEX)
 export async function fetchLatestSession(instrumentKey = 'NIFTY') {
   const config = INSTRUMENTS[instrumentKey] || INSTRUMENTS.NIFTY;
-  const response = await fetch(`/yahoo-api/v8/finance/chart/${config.symbol}?interval=5m&range=5d`);
+  const response = await fetch(`/yahoo-api/v8/finance/chart/${config.symbol}?interval=5m&range=5d&_t=${Date.now()}`, {
+    cache: 'no-store'
+  });
   if (!response.ok) {
     throw new Error(`Market Data Error (${config.name}): ${response.statusText}`);
   }
@@ -363,6 +519,29 @@ export async function fetchLatestSession(instrumentKey = 'NIFTY') {
   const currentSessionCandles = daysMap[latestDate];
   const prevSessionCandles = daysMap[prevDate];
 
+  // Detect whether this session is actively LIVE right now in IST (09:15 AM - 03:30 PM)
+  const now = new Date();
+  const todayIST = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  const istHours = Number(now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
+  const istMins = Number(now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', minute: 'numeric' }));
+  const istTotalMins = istHours * 60 + istMins;
+  const isMarketHours = istTotalMins >= (9 * 60 + 15) && istTotalMins < (15 * 60 + 30);
+  const isLiveSession = (latestDate === todayIST) && isMarketHours;
+
+  // Sync live regularMarketPrice tick onto the latest candle during live market hours
+  const liveMarketPrice = result?.meta?.regularMarketPrice;
+  if (isLiveSession && liveMarketPrice && currentSessionCandles.length > 0) {
+    const lastIdx = currentSessionCandles.length - 1;
+    const lc = currentSessionCandles[lastIdx];
+    const rmp = Number(liveMarketPrice.toFixed(2));
+    currentSessionCandles[lastIdx] = {
+      ...lc,
+      close: rmp,
+      high: Math.max(lc.high, rmp),
+      low: Math.min(lc.low, rmp)
+    };
+  }
+
   const prevHigh = Math.max(...prevSessionCandles.map(c => c.high));
   const prevLow = Math.min(...prevSessionCandles.map(c => c.low));
   const prevClose = prevSessionCandles[prevSessionCandles.length - 1].close;
@@ -374,15 +553,16 @@ export async function fetchLatestSession(instrumentKey = 'NIFTY') {
     date: prevDate
   };
 
-  // Evaluate the actual confirmed trade for this session
-  const confirmedTrade = evaluateSessionTrade(currentSessionCandles, prevDayLevels, instrumentKey);
+  // Evaluate the actual confirmed trade for this session (with live non-repainting mode when live!)
+  const confirmedTrade = evaluateSessionTrade(currentSessionCandles, prevDayLevels, instrumentKey, isLiveSession);
 
   return {
     candles: currentSessionCandles,
     prevDay: prevDayLevels,
     confirmedTrade,
     latestDate,
-    regularMarketPrice: result?.meta?.regularMarketPrice || currentSessionCandles[currentSessionCandles.length - 1].close,
+    isLiveSession,
+    regularMarketPrice: liveMarketPrice || currentSessionCandles[currentSessionCandles.length - 1].close,
     instrument: config.id,
     lotSize: config.lotSize
   };

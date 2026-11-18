@@ -189,6 +189,7 @@ export default function App() {
             } lg:block min-h-[380px] lg:h-full min-h-0`}>
             <SignalCard
               activeSignal={activeSignal}
+              currentSpotPrice={currentPrice}
               onExecutePaperTrade={executePaperTrade}
             />
           </div>

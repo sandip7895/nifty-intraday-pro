@@ -6,13 +6,34 @@ import {
 } from '../data/tradingLogic';
 import {
   INSTRUMENTS,
-  fetchLatestSession
+  fetchLatestSession,
+  updateLockedTradeStatus
 } from '../services/marketDataService';
 import {
   playSignalChime,
   playTargetChime,
   playSlChime
 } from '../services/audioService';
+
+// Helper to safely read/write locked live signal per (instrument, date) so live signals NEVER flicker/disappear
+function getLockedLiveSignal(instrumentKey, dateKey) {
+  if (typeof window === 'undefined' || !dateKey) return null;
+  try {
+    const raw = localStorage.getItem(`nifty_pro_locked_sig_${instrumentKey}_${dateKey}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLockedLiveSignal(instrumentKey, dateKey, trade) {
+  if (typeof window === 'undefined' || !dateKey || !trade) return;
+  try {
+    localStorage.setItem(`nifty_pro_locked_sig_${instrumentKey}_${dateKey}`, JSON.stringify(trade));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 // Check if Indian Stock Market (NSE / BSE) is open in IST
 export function checkIsMarketOpen() {
@@ -47,46 +68,86 @@ export function useTradingSimulation() {
   const [closedTrades, setClosedTrades] = useState([]);
 
   const currentConfig = INSTRUMENTS[instrument] || INSTRUMENTS.NIFTY;
+  const activeInstrumentRef = useRef(instrument);
+  const lastOutcomeRef = useRef({}); // Track per-signal status so Target/SL chime fires ONCE live
 
   // Fetch real market session for the selected instrument
-  const loadRealMarketData = useCallback(async (targetInstrument = instrument) => {
+  const loadRealMarketData = useCallback(async (targetInstrument = instrument, silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
       const data = await fetchLatestSession(targetInstrument);
+
+      // Guard against stale async responses if user switched instrument mid-request
+      if (activeInstrumentRef.current !== targetInstrument) return;
+
       if (data && data.candles && data.candles.length > 0) {
         setCandles(data.candles);
         setPrevDay(data.prevDay);
-        setConfirmedTrade(data.confirmedTrade);
+
+        let finalTrade = data.confirmedTrade;
+
+        if (data.isLiveSession) {
+          // LIVE SESSION LOCKING: Once a signal fires in live market, lock it for the day
+          // so it NEVER flickers, disappears, or repaints on subsequent polls!
+          const existingLocked = getLockedLiveSignal(targetInstrument, data.latestDate);
+          if (existingLocked) {
+            const updatedLocked = updateLockedTradeStatus(
+              existingLocked,
+              data.candles,
+              data.regularMarketPrice,
+              targetInstrument
+            );
+            // Fire audio chime if trade just transitioned live from OPEN -> TARGET_HIT or SL_HIT
+            const lockKey = `${targetInstrument}_${data.latestDate}`;
+            if (existingLocked.status === 'OPEN' && updatedLocked.status === 'TARGET_HIT' && lastOutcomeRef.current[lockKey] !== 'TARGET_HIT') {
+              playTargetChime();
+              lastOutcomeRef.current[lockKey] = 'TARGET_HIT';
+            } else if (existingLocked.status === 'OPEN' && updatedLocked.status === 'SL_HIT' && lastOutcomeRef.current[lockKey] !== 'SL_HIT') {
+              playSlChime();
+              lastOutcomeRef.current[lockKey] = 'SL_HIT';
+            }
+            saveLockedLiveSignal(targetInstrument, data.latestDate, updatedLocked);
+            finalTrade = updatedLocked;
+          } else if (data.confirmedTrade) {
+            // First time signal triggers live today -> Lock it immediately & chime!
+            saveLockedLiveSignal(targetInstrument, data.latestDate, data.confirmedTrade);
+            playSignalChime();
+            finalTrade = data.confirmedTrade;
+          }
+        }
+
+        setConfirmedTrade(finalTrade);
       }
     } catch (err) {
       console.error(`Error fetching real market data for ${targetInstrument}:`, err);
       setError(err.message || 'Error loading live market data');
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [instrument]);
 
   // Switch between NIFTY 50 and BSE SENSEX
   const selectInstrument = useCallback((newInstrument) => {
     if (newInstrument === instrument) return;
+    activeInstrumentRef.current = newInstrument;
     setInstrument(newInstrument);
     setCandles([]);
     setConfirmedTrade(null);
-    loadRealMarketData(newInstrument);
-  }, [instrument, loadRealMarketData]);
+  }, [instrument]);
 
-  // Fetch on mount or when instrument changes
+  // Fetch on mount or when instrument changes + 10s live market polling
   useEffect(() => {
-    loadRealMarketData(instrument);
+    activeInstrumentRef.current = instrument;
+    loadRealMarketData(instrument, false);
 
     const interval = setInterval(() => {
       const open = checkIsMarketOpen();
       setIsMarketOpen(open);
       if (open) {
-        loadRealMarketData(instrument);
+        loadRealMarketData(instrument, true);
       }
-    }, 20000); // 20s refresh
+    }, 10000); // 10s fast live refresh
 
     return () => clearInterval(interval);
   }, [instrument, loadRealMarketData]);
@@ -135,6 +196,7 @@ export function useTradingSimulation() {
     lotSize: confirmedTrade.lotSize || currentConfig.lotSize,
     spotTrigger: confirmedTrade.spotEntry,
     optionEntry: confirmedTrade.entryPrice,
+    currentOptPrice: confirmedTrade.currentOptPrice || confirmedTrade.exitPrice || confirmedTrade.entryPrice,
     optionSl: confirmedTrade.sl,
     optionTarget1: confirmedTrade.target1,
     optionTarget2: confirmedTrade.target2,
@@ -154,6 +216,7 @@ export function useTradingSimulation() {
     lotSize: currentConfig.lotSize,
     spotTrigger: currentPrice,
     optionEntry: currentConfig.defaultCeEntry,
+    currentOptPrice: currentConfig.defaultCeEntry,
     optionSl: Number((currentConfig.defaultCeEntry * (1 - currentConfig.slPct)).toFixed(1)),
     optionTarget1: Number((currentConfig.defaultCeEntry * (1 + currentConfig.target1Pct)).toFixed(1)),
     optionTarget2: Number((currentConfig.defaultCeEntry * (1 + currentConfig.target2Pct)).toFixed(1)),
@@ -161,7 +224,7 @@ export function useTradingSimulation() {
     timestamp: '--'
   };
 
-  // Audio alert chime when a new live signal appears
+  // Audio alert chime when a new non-locked signal appears
   const lastSignalRef = useRef(null);
   useEffect(() => {
     if (activeSignal && activeSignal.action !== 'WAIT' && activeSignal.strikeName) {

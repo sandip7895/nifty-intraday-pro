@@ -3,6 +3,7 @@ import { Target, Shield, Check, ArrowRight, Zap, Info, Plus, Minus } from 'lucid
 
 export default function SignalCard({
   activeSignal,
+  currentSpotPrice,
   onExecutePaperTrade
 }) {
   const [lotCount, setLotCount] = useState(1);
@@ -24,6 +25,21 @@ export default function SignalCard({
   const slPrice = activeSignal.optionSl || (entryPrice * 0.86);
 
   const delta = isSensex ? 0.50 : 0.52;
+
+  // Real-time live option LTP (shows actual current price while OPEN, or exit price when finalized)
+  const isOpenTrade = activeSignal.status === 'OPEN' || !activeSignal.result;
+  let liveLtp = entryPrice;
+  if (!isWait) {
+    if (!isOpenTrade && activeSignal.exitPrice) {
+      liveLtp = activeSignal.exitPrice;
+    } else if (activeSignal.currentOptPrice) {
+      liveLtp = activeSignal.currentOptPrice;
+    } else if (currentSpotPrice && spotEntry) {
+      const spotDiff = isCe ? (currentSpotPrice - spotEntry) : (spotEntry - currentSpotPrice);
+      liveLtp = Number(Math.max(1, entryPrice + spotDiff * delta).toFixed(1));
+    }
+  }
+  const livePct = entryPrice > 0 ? Number((((liveLtp - entryPrice) / entryPrice) * 100).toFixed(1)) : 0;
   const t1Pts = Math.round((target1Price - entryPrice) / delta);
   const t2Pts = Math.round((target2Price - entryPrice) / delta);
   const slPts = Math.round((entryPrice - slPrice) / delta);
@@ -100,21 +116,25 @@ export default function SignalCard({
             <div className="text-right">
               <div className="flex items-baseline justify-end gap-1">
                 <span className="text-base sm:text-lg font-black font-mono text-slate-900">
-                  ₹{entryPrice.toFixed(1)}
+                  ₹{Number(liveLtp).toFixed(1)}
                 </span>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase">LTP</span>
+                <span className={`text-[10px] font-bold font-mono ${livePct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {livePct >= 0 ? '+' : ''}{livePct}%
+                </span>
               </div>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                {activeSignal.result ? (
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${activeSignal.status === 'TARGET_HIT'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-rose-100 text-rose-800'
-                    }`}>
-                    {activeSignal.status === 'TARGET_HIT' ? 'Target Achieved' : 'SL Hit'}
+                {activeSignal.status === 'TARGET_HIT' ? (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded font-mono bg-emerald-100 text-emerald-800">
+                    Target Achieved
+                  </span>
+                ) : activeSignal.status === 'SL_HIT' ? (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded font-mono bg-rose-100 text-rose-800">
+                    SL Hit
                   </span>
                 ) : (
-                  <span className="text-[10px] font-semibold text-slate-500">
-                    Confidence: <strong className="text-emerald-600 font-mono">{activeSignal.accuracy}%</strong>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono bg-blue-50 text-blue-700 border border-blue-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                    LIVE ACTIVE
                   </span>
                 )}
               </div>
