@@ -19,6 +19,7 @@ export default function Navbar({
   paperBalance,
   onResetFund,
   onOpenBacktest,
+  onOpenBrokerSettings,
   isMarketOpen,
   isFeedDelayed = false
 }) {
@@ -149,6 +150,18 @@ export default function Navbar({
         {/* Right: Actions */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           
+          {/* m.Stock Direct Broker Pill */}
+          <button
+            type="button"
+            onClick={onOpenBrokerSettings}
+            title="Connected Broker: m.Stock (Mirae Asset) • Click to View Settings"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-emerald-200/90 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-800 text-[10.5px] sm:text-xs font-bold transition cursor-pointer shadow-2xs shrink-0"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-extrabold text-emerald-900">m.Stock</span>
+            <span className="text-[9px] px-1 py-0.2 bg-emerald-200/70 rounded text-emerald-950 font-mono hidden md:inline">CPKPP0455F</span>
+          </button>
+
           {/* Backtest Button - Visible on Tablet & Desktop (Mobile has bottom tab) */}
           <button
             onClick={onOpenBacktest}
