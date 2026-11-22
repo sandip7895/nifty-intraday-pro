@@ -60,31 +60,50 @@ export default function Navbar({
         {/* Left: Brand Icon + Switcher + Spot LTP */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
           
-          {/* Brand Icon + Name (Name hidden on mobile to avoid crowding) */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br ${
-              selectedInstrument === 'SENSEX'
-                ? 'from-purple-950 via-slate-900 to-indigo-950'
-                : 'from-slate-900 via-slate-800 to-blue-950'
-            } flex items-center justify-center text-white shadow-xs border border-slate-700/40 p-1`}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`w-full h-full ${
-                selectedInstrument === 'SENSEX' ? 'text-purple-400' : 'text-emerald-400'
-              }`}>
-                <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                <polyline points="16 7 22 7 22 13" />
+          {/* Unified Brand Identity - Identical on Web & Mobile */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Premium Obsidian Squircle Logo Icon */}
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-slate-950 p-1 flex items-center justify-center shadow-[0_2px_8px_rgba(2,132,199,0.25)] border border-slate-700/60 shrink-0 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-emerald-500/10 pointer-events-none"></div>
+              {/* Geometric SVG "N" Breakout Candlestick Mark */}
+              <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full shrink-0">
+                <defs>
+                  <linearGradient id="navLogoNeon" x1="7" y1="20" x2="25" y2="5" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#0ea5e9" />
+                    <stop offset="50%" stopColor="#06b6d4" />
+                    <stop offset="100%" stopColor="#10b981" />
+                  </linearGradient>
+                  <filter id="navLogoGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="0.8" result="glow" />
+                    <feComposite in="SourceGraphic" in2="glow" operator="over" />
+                  </filter>
+                </defs>
+                <line x1="8" y1="9" x2="8" y2="24" stroke="#0ea5e9" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+                <rect x="6.3" y="12" width="3.4" height="10" rx="0.8" fill="#0ea5e9" />
+                <path d="M8 13L24 6.5" stroke="url(#navLogoNeon)" strokeWidth="2.4" strokeLinecap="round" filter="url(#navLogoGlow)" />
+                <line x1="24" y1="4.5" x2="24" y2="22" stroke="#10b981" strokeWidth="1.4" strokeLinecap="round" opacity="0.6" />
+                <rect x="22.3" y="6.5" width="3.4" height="12" rx="0.8" fill="#10b981" filter="url(#navLogoGlow)" />
+                <circle cx="24" cy="6.5" r="2.1" fill="#ffffff" stroke="#10b981" strokeWidth="1.2" />
               </svg>
             </div>
-            
-            {/* Full text on tablet / desktop only */}
-            <div className="hidden md:flex flex-col">
-              <span className="font-black text-slate-900 text-xs sm:text-sm tracking-tight leading-none">
-                {selectedInstrument === 'SENSEX' ? 'BSE SENSEX' : 'NIFTY 50'}
-              </span>
-              <span className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase leading-none mt-0.5">
-                INTRADAY PRO
+
+            {/* Premium Typography Wordmark (Visible identically on both Mobile & Web) */}
+            <div className="flex flex-col justify-center leading-none">
+              <div className="flex items-center gap-1">
+                <span className="font-black text-slate-900 text-xs sm:text-sm tracking-tight font-sans">
+                  NIFTY
+                </span>
+                <span className="px-1 py-0.2 rounded text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-2xs font-mono">
+                  PRO
+                </span>
+              </div>
+              <span className="text-[7.5px] sm:text-[8px] text-slate-400 font-extrabold tracking-widest uppercase mt-0.5 font-sans">
+                INTRADAY
               </span>
             </div>
           </div>
+
+          <div className="h-4 w-[1px] bg-slate-200 shrink-0 hidden sm:block"></div>
 
           {/* Sahi / Kite Style Index Switcher Pill */}
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
