@@ -137,7 +137,6 @@ export default function TradingChart({
   const [internalChartMode, setInternalChartMode] = useState('SPOT');
   const chartMode = externalChartMode !== undefined ? externalChartMode : internalChartMode;
   const handleSetChartMode = onToggleChartMode || setInternalChartMode;
-  const [activeTimeframe, setActiveTimeframe] = useState('5m');
   const [showVWAP, setShowVWAP] = useState(true);
 
   const isSensex = instrument === 'SENSEX' || activeSignal?.instrument === 'SENSEX';
@@ -563,20 +562,9 @@ export default function TradingChart({
 
           <div className="h-3 w-[1px] bg-slate-200 hidden sm:block"></div>
 
-          <div className="flex items-center gap-0.5 text-[11px]">
-            {['1m', '3m', '5m', '15m'].map(tf => (
-              <button
-                key={tf}
-                onClick={() => setActiveTimeframe(tf)}
-                className={`px-1.5 py-0.5 rounded transition cursor-pointer ${activeTimeframe === tf
-                  ? 'bg-[#e8f0fe] text-[#387ed1] font-bold'
-                  : 'text-slate-500 hover:text-slate-800 font-medium'
-                  }`}
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
+          <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono">
+            5m
+          </span>
         </div>
 
         {/* Center: Live Chart Lines Legend */}
