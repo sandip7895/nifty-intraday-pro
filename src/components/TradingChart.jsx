@@ -447,7 +447,7 @@ export default function TradingChart({
           exitIdx = activeSignal.exitCandleIndex;
         }
 
-        if (isFinalizedOutcome && exitIdx >= 0 && exitIdx > entryIdx && formattedCandles[exitIdx]) {
+        if (isFinalizedOutcome && exitIdx >= 0 && exitIdx >= entryIdx && formattedCandles[exitIdx]) {
           const exitCandle = formattedCandles[exitIdx];
           const isTargetHit = activeSignal.status === 'TARGET_HIT' || activeSignal.result?.includes('Target');
           const isSlHit = activeSignal.status === 'SL_HIT' || activeSignal.result?.includes('Stop Loss');

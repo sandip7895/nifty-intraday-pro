@@ -304,11 +304,9 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
     let exitCandleIndex = -1;
     let pnl = 0;
 
-    // In LIVE mode, only evaluate Target/SL on candles AFTER the entry candle (k = entryCandleIndex + 1)
-    // so an earlier wick inside the entry candle NEVER falsely triggers instant "Target Achieved"!
-    const startEvalIdx = isLiveSession
-      ? triggeredTrade.entryCandleIndex + 1
-      : triggeredTrade.entryCandleIndex;
+    // Option B Execution: Always evaluate Target/SL on candles AFTER the entry candle (k = entryCandleIndex + 1)
+    // so an earlier wick that formed before the 09:33 AM entry NEVER falsely triggers an instant premature SL or Target!
+    const startEvalIdx = triggeredTrade.entryCandleIndex + 1;
 
     for (let k = startEvalIdx; k < currentDayCandles.length; k++) {
       const kc = currentDayCandles[k];
