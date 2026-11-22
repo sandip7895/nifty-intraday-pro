@@ -155,7 +155,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#f8fafc] text-slate-800 overflow-y-auto lg:overflow-hidden font-sans select-none">
+    <div className="min-h-screen lg:h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#f8fafc] text-slate-800 overflow-y-auto lg:overflow-hidden font-sans">
 
       {/* Top Sleek Sahi / Kite Style Navbar */}
       <Navbar
