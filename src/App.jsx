@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import TradingChart from './components/TradingChart';
 import SignalCard from './components/SignalCard';
-import PaperTradeManager from './components/PaperTradeManager';
 import BacktestModal from './components/BacktestModal';
 import BrokerSettingsModal from './components/BrokerSettingsModal';
 import { useTradingSimulation } from './hooks/useTradingSimulation';
@@ -12,7 +11,6 @@ import {
   LayoutGrid,
   TrendingUp,
   Zap,
-  Briefcase,
   Database
 } from 'lucide-react';
 
@@ -43,7 +41,7 @@ export default function App() {
   const [isBacktestModalOpen, setIsBacktestModalOpen] = useState(false);
   const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
   const [replayedDay, setReplayedDay] = useState(null);
-  const [mobileTab, setMobileTab] = useState('all'); // 'all', 'chart', 'signal', 'positions'
+  const [mobileTab, setMobileTab] = useState('all'); // 'all', 'chart', 'signal'
   const [customPremiumMap, setCustomPremiumMap] = useState(() => {
     try {
       const saved = localStorage.getItem('nifty_pro_custom_premiums');
@@ -206,15 +204,6 @@ export default function App() {
           >
             Trade Signal
           </button>
-          <button
-            onClick={() => setMobileTab('positions')}
-            className={`flex-1 py-1.5 text-xs text-center rounded-lg transition-all cursor-pointer ${mobileTab === 'positions'
-              ? 'bg-white text-blue-600 font-extrabold shadow-xs'
-              : 'text-slate-600 hover:text-slate-900 font-medium'
-              }`}
-          >
-            Positions ({positions.length})
-          </button>
         </div>
 
         {/* Replay Banner if in Historical Replay Mode */}
@@ -290,16 +279,6 @@ export default function App() {
 
         </div>
 
-        {/* Lower Core Area (Active Position & Today's Completed Trades) */}
-        <div className={`${mobileTab === 'all' || mobileTab === 'positions' ? 'block' : 'hidden'
-          } lg:block shrink-0`}>
-          <PaperTradeManager
-            positions={positions}
-            closedTrades={closedTrades}
-            onClosePosition={closePositionManually}
-          />
-        </div>
-
       </main>
 
       {/* Sahi / Dhan Style Native Mobile Bottom App Bar */}
@@ -338,22 +317,7 @@ export default function App() {
           )}
         </button>
 
-        {/* Tab 4: Positions */}
-        <button
-          onClick={() => setMobileTab('positions')}
-          className={`flex flex-col items-center justify-center flex-1 py-1 transition cursor-pointer relative ${mobileTab === 'positions' ? 'text-blue-600 font-extrabold' : 'text-slate-400 hover:text-slate-600 font-medium'
-            }`}
-        >
-          <Briefcase className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] tracking-tight">Positions</span>
-          {positions.length > 0 && (
-            <span className="absolute top-0 right-1/4 px-1 min-w-[14px] h-[14px] text-[8px] font-black rounded-full bg-blue-600 text-white flex items-center justify-center">
-              {positions.length}
-            </span>
-          )}
-        </button>
-
-        {/* Tab 5: Backtest Report */}
+        {/* Tab 4: Backtest Report */}
         <button
           onClick={() => setIsBacktestModalOpen(true)}
           className="flex flex-col items-center justify-center flex-1 py-1 text-slate-400 hover:text-slate-600 font-medium transition cursor-pointer"
