@@ -316,7 +316,7 @@ export function useTradingSimulation() {
       qty,
       entryPrice: signal.optionEntry,
       currentPrice: signal.optionEntry,
-      spotAtEntry: currentPrice,
+      spotAtEntry: (hasCandles && currentPrice) ? currentPrice : (signal.spotTrigger || currentConfig.defaultPrice),
       sl: signal.optionSl,
       target1: signal.optionTarget1,
       target2: signal.optionTarget2,
@@ -331,7 +331,9 @@ export function useTradingSimulation() {
 
   // Live P&L tracking and Auto Target 1 / SL Exit for open paper trade positions
   useEffect(() => {
-    if (positions.length === 0 || !currentPrice) return;
+    // CRITICAL GUARD: Never evaluate live P&L or auto-exits during initial loading or before real candles are fetched.
+    // This prevents dummy initial fallback prices from triggering a false premature Stop Loss on page refresh!
+    if (positions.length === 0 || !hasCandles || isLoading || !currentPrice) return;
 
     let hasExits = false;
     const remainingPositions = [];
