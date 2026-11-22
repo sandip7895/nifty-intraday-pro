@@ -13,6 +13,16 @@ export default function SignalCard({
   const [lotCount, setLotCount] = useState(1);
   const [isEditingEntry, setIsEditingEntry] = useState(false);
   const [entryInput, setEntryInput] = useState('');
+  const [justOrdered, setJustOrdered] = useState(false);
+
+  const handleOrder = () => {
+    if (!onExecutePaperTrade) return;
+    const ok = onExecutePaperTrade({ ...activeSignal, lotSize: totalQty, lotCount });
+    if (ok !== false) {
+      setJustOrdered(true);
+      setTimeout(() => setJustOrdered(false), 1500);
+    }
+  };
 
   const isBuyCe = activeSignal.action === 'BUY_CE';
   const isBuyPe = activeSignal.action === 'BUY_PE';
@@ -60,7 +70,7 @@ export default function SignalCard({
   const slRisk = Math.round((entryPrice - slPrice) * totalQty);
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-xl p-3 sm:p-4 shadow-xs flex flex-col justify-between h-full w-full max-w-full overflow-hidden font-sans">
+    <div className="bg-white border border-slate-200/90 rounded-xl p-3 sm:p-3.5 shadow-xs flex flex-col w-full max-w-full shrink-0 font-sans">
 
       {/* Sahi / Kite Header: Instrument & Live Price */}
       <div className="pb-2.5 border-b border-slate-100 shrink-0">
@@ -175,17 +185,17 @@ export default function SignalCard({
       </div>
 
       {isWait ? (
-        <div className="py-12 text-center text-slate-400 text-xs">
+        <div className="py-8 text-center text-slate-400 text-xs">
           Scanning {isSensex ? 'BSE SENSEX' : 'NIFTY 50'} 5-minute candles for ORB & EMA Ribbon confluence...
         </div>
       ) : (
-        <div className="my-2 space-y-2 flex-1 flex flex-col justify-around">
+        <div className="mt-2 space-y-2">
 
           {/* Parameters Grid (Entry, SL, Target 1, Target 2) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
 
             {/* 1. ENTRY (Editable to sync with Real Broker LTP e.g. ₹190) */}
-            <div className={`p-2 rounded border transition ${activeSignal.isCustomPremium ? 'bg-blue-50/70 border-blue-300' : 'bg-slate-50 border-slate-200'}`}>
+            <div className={`p-1.5 sm:p-2 rounded-lg border transition ${activeSignal.isCustomPremium ? 'bg-blue-50/70 border-blue-300' : 'bg-slate-50 border-slate-200'}`}>
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider truncate">
                   {activeSignal.isCustomPremium ? 'ENTRY (SYNCED)' : 'ENTRY (EST.)'}
@@ -258,97 +268,110 @@ export default function SignalCard({
                     }
                   }}
                   title="Click to enter your real broker LTP"
-                  className="text-sm font-bold font-mono text-slate-900 mt-0.5 hover:text-blue-600 transition cursor-pointer text-left block"
+                  className="text-xs sm:text-sm font-bold font-mono text-slate-900 mt-0.5 hover:text-blue-600 transition cursor-pointer text-left block"
                 >
                   ₹{entryPrice.toFixed(1)}
                 </button>
               )}
 
-              <span className="text-[10px] text-slate-500 font-mono block">
+              <span className="text-[10px] text-slate-500 font-mono block truncate">
                 Spot ₹{spotEntry}
               </span>
             </div>
 
             {/* 2. STOP LOSS */}
-            <div className="p-2 rounded-lg bg-rose-50/70 border border-rose-200/80">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-rose-50/70 border border-rose-200/80">
               <span className="text-[9px] font-bold text-rose-700 uppercase tracking-wider block">
                 STOP LOSS (-14%)
               </span>
-              <div className="text-sm font-bold font-mono text-rose-700 mt-0.5">
+              <div className="text-xs sm:text-sm font-bold font-mono text-rose-700 mt-0.5">
                 ₹{slPrice.toFixed(1)}
               </div>
-              <span className="text-[10px] text-rose-600 font-mono block">
+              <span className="text-[10px] text-rose-600 font-mono block truncate">
                 -₹{slRisk.toLocaleString('en-IN')} Risk
               </span>
             </div>
 
             {/* 3. TARGET 1 */}
-            <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
               <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block">
                 TARGET 1 (+18%)
               </span>
-              <div className="text-sm font-bold font-mono text-emerald-700 mt-0.5">
+              <div className="text-xs sm:text-sm font-bold font-mono text-emerald-700 mt-0.5">
                 ₹{target1Price.toFixed(1)}
               </div>
-              <span className="text-[10px] text-emerald-600 font-mono block">
+              <span className="text-[10px] text-emerald-600 font-mono block truncate">
                 +₹{target1Gain.toLocaleString('en-IN')} (50%)
               </span>
             </div>
 
             {/* 4. TARGET 2 */}
-            <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
               <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block">
                 TARGET 2 (+45%)
               </span>
-              <div className="text-sm font-bold font-mono text-emerald-700 mt-0.5">
+              <div className="text-xs sm:text-sm font-bold font-mono text-emerald-700 mt-0.5">
                 ₹{target2Price.toFixed(1)}
               </div>
-              <span className="text-[10px] text-emerald-600 font-mono block">
+              <span className="text-[10px] text-emerald-600 font-mono block truncate">
                 +₹{target2Gain.toLocaleString('en-IN')} (Max)
               </span>
             </div>
 
           </div>
 
-          {/* V3 Pro Confluence Checkpoints */}
-          <div className="py-1 px-2 rounded-lg bg-slate-50 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-6 gap-1 text-[10px] text-slate-600">
-            <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+          {/* V3 Pro Confluence Checkpoints - Compact 3x2 Grid */}
+          <div className="py-1 px-2 rounded-lg bg-slate-50 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-0.5 text-[10px] text-slate-600">
+            <span className="flex items-center gap-1 font-medium truncate">
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3] shrink-0" />
               <span>3-Min Fast Trigger</span>
             </span>
-            <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+            <span className="flex items-center gap-1 font-medium truncate">
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3] shrink-0" />
               <span>15-Min ORB Filter</span>
             </span>
-            <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+            <span className="flex items-center gap-1 font-medium truncate">
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3] shrink-0" />
               <span>Day Open Rule</span>
             </span>
-            <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+            <span className="flex items-center gap-1 font-medium truncate">
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3] shrink-0" />
               <span>9/21 EMA Ribbon</span>
             </span>
-            <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+            <span className="flex items-center gap-1 font-medium truncate">
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3] shrink-0" />
               <span>Supertrend (10,3)</span>
             </span>
-            <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+            <span className="flex items-center gap-1 font-medium truncate">
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3] shrink-0" />
               <span>ADX &gt; 18 Trend</span>
             </span>
           </div>
 
           {/* Action Button & Margin Row */}
-          <div className="space-y-2 pt-1">
+          <div className="space-y-1.5 pt-0.5">
             <button
-              onClick={() => onExecutePaperTrade({ ...activeSignal, lotSize: totalQty, lotCount })}
-              className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition active:scale-[0.98] text-white shadow-xs flex items-center justify-center gap-2 cursor-pointer ${isBuyCe
-                ? 'bg-emerald-600 hover:bg-emerald-700'
-                : 'bg-rose-600 hover:bg-rose-700'
-                }`}
+              onClick={handleOrder}
+              disabled={isWait}
+              className={`w-full py-2.5 sm:py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition active:scale-[0.98] text-white shadow-xs flex items-center justify-center gap-2 cursor-pointer ${
+                justOrdered
+                  ? 'bg-emerald-700 ring-2 ring-emerald-400'
+                  : isBuyCe
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'bg-rose-600 hover:bg-rose-700'
+              }`}
             >
-              <Zap className="w-4 h-4 fill-current" />
-              <span>{isBuyCe ? 'BUY CALL (CE)' : 'BUY PUT (PE)'} • {lotCount} {lotCount === 1 ? 'LOT' : 'LOTS'} ({totalQty} QTY)</span>
+              {justOrdered ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>ORDER EXECUTED • RECORDED BELOW</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4 fill-current" />
+                  <span>{isBuyCe ? 'BUY CALL (CE)' : 'BUY PUT (PE)'} • {lotCount} {lotCount === 1 ? 'LOT' : 'LOTS'} ({totalQty} QTY)</span>
+                </>
+              )}
             </button>
 
             {/* Order Margin & Upgraded R:R Details */}

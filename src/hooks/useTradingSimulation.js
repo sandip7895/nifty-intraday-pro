@@ -65,9 +65,64 @@ export function useTradingSimulation() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [paperBalance, setPaperBalance] = useState(100000);
-  const [positions, setPositions] = useState([]);
-  const [closedTrades, setClosedTrades] = useState([]);
+  // Paper Trading State with LocalStorage Persistence across Page Refresh
+  const [paperBalance, setPaperBalance] = useState(() => {
+    if (typeof window === 'undefined') return 100000;
+    try {
+      const saved = localStorage.getItem('nifty_pro_paper_balance');
+      return saved !== null && !isNaN(Number(saved)) ? Number(saved) : 100000;
+    } catch {
+      return 100000;
+    }
+  });
+
+  const [positions, setPositions] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('nifty_pro_paper_positions');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [closedTrades, setClosedTrades] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('nifty_pro_paper_closed_trades');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Automatically sync paper trade changes to localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('nifty_pro_paper_balance', String(paperBalance));
+    } catch (e) {
+      console.error('Failed to save paper balance:', e);
+    }
+  }, [paperBalance]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('nifty_pro_paper_positions', JSON.stringify(positions));
+    } catch (e) {
+      console.error('Failed to save paper positions:', e);
+    }
+  }, [positions]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('nifty_pro_paper_closed_trades', JSON.stringify(closedTrades));
+    } catch (e) {
+      console.error('Failed to save paper closed trades:', e);
+    }
+  }, [closedTrades]);
 
   const currentConfig = INSTRUMENTS[instrument] || INSTRUMENTS.NIFTY;
   const activeInstrumentRef = useRef(instrument);
@@ -382,11 +437,20 @@ export function useTradingSimulation() {
     setPositions(prev => prev.filter(p => p.id !== positionId));
   };
 
-  const resetPaperAccount = () => {
+  const resetPaperAccount = useCallback(() => {
     setPaperBalance(100000);
     setPositions([]);
     setClosedTrades([]);
-  };
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('nifty_pro_paper_balance', '100000');
+        localStorage.removeItem('nifty_pro_paper_positions');
+        localStorage.removeItem('nifty_pro_paper_closed_trades');
+      } catch (e) {
+        console.error('Failed to clear paper storage:', e);
+      }
+    }
+  }, []);
 
   return {
     instrument,

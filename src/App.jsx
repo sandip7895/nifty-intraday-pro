@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 import TradingChart from './components/TradingChart';
 import SignalCard from './components/SignalCard';
+import PaperTradeManager from './components/PaperTradeManager';
 import BacktestModal from './components/BacktestModal';
 import { useTradingSimulation } from './hooks/useTradingSimulation';
 import {
@@ -266,9 +267,9 @@ export default function App() {
             />
           </div>
 
-          {/* Real-Market Trade Signal Card */}
-          <div className={`col-span-12 lg:col-span-4 ${mobileTab === 'all' || mobileTab === 'signal' ? 'block' : 'hidden'
-            } lg:block min-h-[380px] lg:h-full min-h-0`}>
+          {/* Real-Market Trade Signal & Paper Trade Manager Column */}
+          <div className={`col-span-12 lg:col-span-4 ${mobileTab === 'all' || mobileTab === 'signal' ? 'flex' : 'hidden'
+            } lg:flex flex-col gap-2.5 min-h-0 lg:h-full lg:overflow-y-auto`}>
             <SignalCard
               activeSignal={effectiveSignal}
               currentSpotPrice={currentPrice}
@@ -280,6 +281,13 @@ export default function App() {
                 setChartMode(mode);
                 if (mobileTab === 'signal') setMobileTab('chart');
               }}
+            />
+
+            <PaperTradeManager
+              positions={positions}
+              closedTrades={closedTrades}
+              onClosePosition={closePositionManually}
+              onResetAccount={resetPaperAccount}
             />
           </div>
 
