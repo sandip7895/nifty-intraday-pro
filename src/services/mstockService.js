@@ -3,15 +3,16 @@
 
 const STORAGE_KEY = 'nifty_pro_mstock_config';
 
+// Zero-Exposure Secure Default: No credentials hardcoded in codebase or public git bundles
 const DEFAULT_CONFIG = {
-  clientCode: 'CPKPP0455F',
-  apiKey: 'rx6NxHZxguxAfplD3yFGYvdiCJtCtjTXeIgjEm+4DtU=',
-  isEnabled: true,
+  clientCode: '',
+  apiKey: '',
+  isEnabled: false,
   brokerName: 'm.Stock (Mirae Asset)',
   apiType: 'Type B',
   validTill: '22 Nov 2027',
-  status: 'ACTIVE',
-  lastConnected: Date.now()
+  status: 'DISCONNECTED',
+  lastConnected: null
 };
 
 // Instrument token mapping for m.Stock Type B
@@ -33,19 +34,30 @@ export const MSTOCK_TOKENS = {
 };
 
 /**
- * Get m.Stock broker configuration from persistent storage or default
+ * Get m.Stock broker configuration strictly from user's private browser localStorage
  */
 export function getMstockConfig() {
   if (typeof window === 'undefined') return DEFAULT_CONFIG;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_CONFIG));
       return DEFAULT_CONFIG;
     }
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
   } catch {
     return DEFAULT_CONFIG;
+  }
+}
+
+/**
+ * Remove credentials from browser completely
+ */
+export function clearMstockConfig() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
   }
 }
 
