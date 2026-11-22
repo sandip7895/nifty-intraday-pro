@@ -559,12 +559,6 @@ export default function TradingChart({
               </span>
             </button>
           </div>
-
-          <div className="h-3 w-[1px] bg-slate-200 hidden sm:block"></div>
-
-          <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded font-mono">
-            5m
-          </span>
         </div>
 
         {/* Center: Live Chart Lines Legend */}

@@ -147,32 +147,30 @@ export default function Navbar({
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 
           {/* Backtest Button - Visible on Tablet & Desktop (Mobile has bottom tab) */}
           <button
             onClick={onOpenBacktest}
-            className="hidden sm:flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg border border-slate-200 hover:border-blue-500 hover:text-blue-600 bg-slate-50/80 hover:bg-white text-slate-700 text-[11px] sm:text-xs font-semibold transition cursor-pointer shadow-2xs shrink-0"
+            className="hidden sm:flex items-center gap-1 px-2.5 h-[30px] sm:h-[32px] rounded-lg border border-slate-200 hover:border-blue-500 hover:text-blue-600 bg-slate-50/80 hover:bg-white text-slate-700 text-[11px] sm:text-xs font-semibold transition cursor-pointer shadow-2xs shrink-0"
           >
             <BarChart2 className="w-3.5 h-3.5 text-blue-600" />
             <span>Backtest Report</span>
           </button>
 
-          {/* Funds Display */}
-          <div className="flex items-center gap-1 sm:gap-1.5 bg-slate-50 border border-slate-200/90 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg shrink-0">
-            <Wallet className="w-3 h-3 text-slate-500 hidden xs:inline" />
-            <div className="text-right">
-              <span className="text-[8px] text-slate-400 uppercase font-bold leading-none hidden sm:block">Funds</span>
-              <span className="text-[10.5px] sm:text-xs font-mono font-extrabold text-slate-800">
-                ₹{Math.round(paperBalance).toLocaleString('en-IN')}
-              </span>
-            </div>
+          {/* Funds Display - Pixel-Perfect Centered Alignment */}
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/90 px-2 rounded-lg shrink-0 h-[30px] sm:h-[32px]">
+            <Wallet className="w-3.5 h-3.5 text-slate-400 shrink-0 hidden xs:inline" />
+            <span className="text-[11px] sm:text-xs font-mono font-extrabold text-slate-800 leading-none tracking-tight flex items-center">
+              ₹{Math.round(paperBalance).toLocaleString('en-IN')}
+            </span>
             <button
+              type="button"
               onClick={onResetFund}
               title="Reset Virtual Funds"
-              className="p-0.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-700 transition cursor-pointer ml-0.5"
+              className="w-4 h-4 flex items-center justify-center rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer shrink-0"
             >
-              <RotateCcw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+              <RotateCcw className="w-3 h-3" />
             </button>
           </div>
 
@@ -180,7 +178,7 @@ export default function Navbar({
           <button
             onClick={handleToggleSound}
             title={soundOn ? 'Trade Sound Alerts: Enabled (Click to Mute)' : 'Trade Sound Alerts: Muted (Click to Enable)'}
-            className={`p-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
+            className={`w-[30px] sm:w-[32px] h-[30px] sm:h-[32px] rounded-lg border transition cursor-pointer flex items-center justify-center shrink-0 ${
               soundOn
                 ? 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
                 : 'bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600'
@@ -193,7 +191,7 @@ export default function Navbar({
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-            className="hidden md:block p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition cursor-pointer"
+            className="hidden md:flex w-[30px] sm:w-[32px] h-[30px] sm:h-[32px] items-center justify-center rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition cursor-pointer shrink-0"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
