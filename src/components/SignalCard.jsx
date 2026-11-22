@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Target, Shield, Check, ArrowRight, Zap, Info, Plus, Minus, Pencil, RotateCcw } from 'lucide-react';
+import { Target, Shield, Check, ArrowRight, Zap, Info, Plus, Minus, Pencil, RotateCcw, BarChart2 } from 'lucide-react';
 
 export default function SignalCard({
   activeSignal,
   currentSpotPrice,
   onExecutePaperTrade,
   onSetCustomPremium,
-  onClearCustomPremium
+  onClearCustomPremium,
+  chartMode = 'SPOT',
+  onToggleChartMode
 }) {
   const [lotCount, setLotCount] = useState(1);
   const [isEditingEntry, setIsEditingEntry] = useState(false);
@@ -65,7 +67,11 @@ export default function SignalCard({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+              <h2
+                onClick={() => !isWait && onToggleChartMode && onToggleChartMode('OPTION')}
+                className={`text-sm sm:text-base font-extrabold text-slate-900 tracking-tight transition ${!isWait && onToggleChartMode ? 'cursor-pointer hover:text-blue-600' : ''}`}
+                title="Click to view Option Chart"
+              >
                 {isWait ? 'Awaiting Confluence Setup' : activeSignal.strikeName}
               </h2>
               {!isWait && (
@@ -145,6 +151,27 @@ export default function SignalCard({
             </div>
           )}
         </div>
+
+        {!isWait && onToggleChartMode && (
+          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-slate-500">
+              Interactive Chart:
+            </span>
+            <button
+              type="button"
+              onClick={() => onToggleChartMode(chartMode === 'OPTION' ? 'SPOT' : 'OPTION')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer shadow-2xs border ${
+                chartMode === 'OPTION'
+                  ? 'bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-700'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200/90 hover:bg-emerald-100'
+              }`}
+              title={chartMode === 'OPTION' ? 'Switch back to Spot Index Chart' : `View Zerodha-style ${activeSignal.strikeName} Option Chart`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>{chartMode === 'OPTION' ? `✓ Viewing ${activeSignal.strikeName} Chart` : `📈 View ${activeSignal.strikeName} Chart`}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {isWait ? (

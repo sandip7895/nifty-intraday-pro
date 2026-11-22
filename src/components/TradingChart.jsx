@@ -126,13 +126,17 @@ export default function TradingChart({
   currentVWAP,
   currentPrice,
   activeSignal,
-  onOpenBacktest
+  onOpenBacktest,
+  chartMode: externalChartMode,
+  onToggleChartMode
 }) {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
 
-  const [chartMode, setChartMode] = useState('SPOT'); // 'SPOT' | 'OPTION'
+  const [internalChartMode, setInternalChartMode] = useState('SPOT');
+  const chartMode = externalChartMode !== undefined ? externalChartMode : internalChartMode;
+  const handleSetChartMode = onToggleChartMode || setInternalChartMode;
   const [activeTimeframe, setActiveTimeframe] = useState('5m');
   const [showVWAP, setShowVWAP] = useState(true);
 
@@ -260,21 +264,32 @@ export default function TradingChart({
       let formattedCandles = [];
 
       if (chartMode === 'OPTION') {
+        const calcOptPrice = (spotDiff) => {
+          if (spotDiff <= 0) {
+            const effectiveDelta = Math.max(0.35, delta + (spotDiff / 600) * 0.15);
+            return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
+          } else {
+            // Gamma acceleration as option goes deep ITM, mirroring real market pricing
+            const effectiveDelta = Math.min(0.85, delta + (spotDiff / 500) * 0.32);
+            return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
+          }
+        };
+
         formattedCandles = candles.map(c => {
           const openDelta = isCe ? (c.open - spotEntry) : (spotEntry - c.open);
           const highDelta = isCe ? (c.high - spotEntry) : (spotEntry - c.low);
           const lowDelta = isCe ? (c.low - spotEntry) : (spotEntry - c.high);
           const closeDelta = isCe ? (c.close - spotEntry) : (spotEntry - c.close);
 
-          const o = Number(Math.max(1, baseEntryPrice + openDelta * delta).toFixed(2));
-          const h = Number(Math.max(o, baseEntryPrice + highDelta * delta).toFixed(2));
-          const l = Number(Math.max(1, Math.min(o, baseEntryPrice + lowDelta * delta)).toFixed(2));
-          const cl = Number(Math.max(1, baseEntryPrice + closeDelta * delta).toFixed(2));
+          const o = Number(calcOptPrice(openDelta).toFixed(2));
+          const h = Number(calcOptPrice(highDelta).toFixed(2));
+          const l = Number(calcOptPrice(lowDelta).toFixed(2));
+          const cl = Number(calcOptPrice(closeDelta).toFixed(2));
           return {
             time: c.time,
             open: o,
-            high: Math.max(h, cl),
-            low: Math.min(l, cl),
+            high: Math.max(h, o, cl),
+            low: Math.min(l, o, cl),
             close: cl
           };
         });
@@ -521,8 +536,8 @@ export default function TradingChart({
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
             <button
               type="button"
-              onClick={() => setChartMode('SPOT')}
-              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer ${chartMode === 'SPOT'
+              onClick={() => handleSetChartMode('SPOT')}
+              className={`px-2 py-0.5 text-[11px] sm:text-xs font-bold rounded-md transition cursor-pointer ${chartMode === 'SPOT'
                 ? 'bg-white text-slate-900 shadow-2xs font-black'
                 : 'text-slate-500 hover:text-slate-800'
                 }`}
@@ -531,17 +546,17 @@ export default function TradingChart({
             </button>
             <button
               type="button"
-              onClick={() => setChartMode('OPTION')}
-              className={`px-1.5 sm:px-2 py-0.5 text-[10.5px] sm:text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1 ${chartMode === 'OPTION'
+              onClick={() => handleSetChartMode('OPTION')}
+              className={`px-2 py-0.5 text-[11px] sm:text-xs font-bold rounded-md transition cursor-pointer flex items-center gap-1.5 ${chartMode === 'OPTION'
                 ? (isCe ? 'bg-emerald-600 text-white shadow-2xs font-black' : 'bg-rose-600 text-white shadow-2xs font-black')
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${chartMode === 'OPTION' ? 'bg-white' : (isCe ? 'bg-emerald-500' : 'bg-rose-500')} animate-pulse`}></span>
               <span>{dynamicStrikeName}</span>
-              <span className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${chartMode === 'OPTION' ? 'bg-black/25 text-white' : 'bg-slate-200 text-slate-700'
+              <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold ${chartMode === 'OPTION' ? 'bg-black/25 text-white' : 'bg-slate-200 text-slate-700'
                 }`}>
-                {chartMode === 'OPTION' ? 'LIVE' : (isCe ? 'CE' : 'PE')}
+                {chartMode === 'OPTION' ? 'OPTION CHART' : (isCe ? 'CE' : 'PE')}
               </span>
             </button>
           </div>
@@ -595,6 +610,41 @@ export default function TradingChart({
           )}
         </div>
       </div>
+
+      {/* Zerodha-Style Real Option Chart Subheader Bar */}
+      {chartMode === 'OPTION' && (
+        <div className="bg-gradient-to-r from-emerald-50 via-teal-50/70 to-slate-50 border-b border-emerald-200/80 px-3 py-1 flex items-center justify-between text-xs font-sans shrink-0 gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-900 bg-white border border-emerald-300 px-2 py-0.5 rounded shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              {dynamicStrikeName} Option Chart
+            </span>
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <span className="text-[11px] text-slate-600">
+              Entry: <strong className="text-blue-700 font-mono font-bold">₹{baseEntryPrice}</strong>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <span className="text-[11px] text-slate-600">
+              T1: <strong className="text-emerald-700 font-mono font-bold">₹{target1Price} (+18%)</strong>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <span className="text-[11px] text-slate-600">
+              T2: <strong className="text-emerald-700 font-mono font-bold">₹{target2Price} (+45%)</strong>
+            </span>
+            <span className="text-slate-300 hidden sm:inline">•</span>
+            <span className="text-[11px] text-slate-600">
+              SL: <strong className="text-rose-700 font-mono font-bold">₹{slPrice} (-14%)</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSetChartMode('SPOT')}
+            className="text-[10.5px] font-bold text-slate-600 hover:text-blue-600 transition underline cursor-pointer ml-auto shrink-0"
+          >
+            ← Switch to {instrument === 'SENSEX' ? 'SENSEX' : 'NIFTY'} Spot
+          </button>
+        </div>
+      )}
 
       {/* Chart Canvas */}
       <div className="relative flex-1 w-full max-w-full min-h-0 overflow-hidden" ref={chartContainerRef}>

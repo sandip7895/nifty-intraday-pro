@@ -42,6 +42,7 @@ export default function App() {
   const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
   const [replayedDay, setReplayedDay] = useState(null);
   const [mobileTab, setMobileTab] = useState('all'); // 'all', 'chart', 'signal'
+  const [chartMode, setChartMode] = useState('SPOT'); // 'SPOT' | 'OPTION'
   const [customPremiumMap, setCustomPremiumMap] = useState(() => {
     try {
       const saved = localStorage.getItem('nifty_pro_custom_premiums');
@@ -262,6 +263,8 @@ export default function App() {
               currentPrice={currentPrice}
               activeSignal={effectiveSignal}
               onOpenBacktest={() => setIsBacktestModalOpen(true)}
+              chartMode={chartMode}
+              onToggleChartMode={setChartMode}
             />
           </div>
 
@@ -274,6 +277,11 @@ export default function App() {
               onExecutePaperTrade={executePaperTrade}
               onSetCustomPremium={handleSetCustomPremium}
               onClearCustomPremium={handleClearCustomPremium}
+              chartMode={chartMode}
+              onToggleChartMode={(mode) => {
+                setChartMode(mode);
+                if (mobileTab === 'signal') setMobileTab('chart');
+              }}
             />
           </div>
 
