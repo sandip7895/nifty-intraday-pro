@@ -3,7 +3,6 @@ import Navbar from './components/Navbar';
 import TradingChart from './components/TradingChart';
 import SignalCard from './components/SignalCard';
 import BacktestModal from './components/BacktestModal';
-import BrokerSettingsModal from './components/BrokerSettingsModal';
 import { useTradingSimulation } from './hooks/useTradingSimulation';
 import {
   RotateCcw,
@@ -39,7 +38,6 @@ export default function App() {
   } = useTradingSimulation();
 
   const [isBacktestModalOpen, setIsBacktestModalOpen] = useState(false);
-  const [isBrokerModalOpen, setIsBrokerModalOpen] = useState(false);
   const [replayedDay, setReplayedDay] = useState(null);
   const [mobileTab, setMobileTab] = useState('all'); // 'all', 'chart', 'signal'
   const [chartMode, setChartMode] = useState('SPOT'); // 'SPOT' | 'OPTION'
@@ -168,7 +166,6 @@ export default function App() {
         paperBalance={paperBalance}
         onResetFund={resetPaperAccount}
         onOpenBacktest={() => setIsBacktestModalOpen(true)}
-        onOpenBrokerSettings={() => setIsBrokerModalOpen(true)}
         isMarketOpen={isMarketOpen}
         isFeedDelayed={isFeedDelayed && !isReplaying}
       />
@@ -342,12 +339,6 @@ export default function App() {
         onClose={() => setIsBacktestModalOpen(false)}
         onLoadDayToChart={handleLoadDayToChart}
         currentInstrument={instrument}
-      />
-
-      {/* Broker Live Feed Settings Modal */}
-      <BrokerSettingsModal
-        isOpen={isBrokerModalOpen}
-        onClose={() => setIsBrokerModalOpen(false)}
       />
 
     </div>
