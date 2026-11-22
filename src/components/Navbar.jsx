@@ -123,7 +123,7 @@ export default function Navbar({
               onClick={() => onSelectInstrument && onSelectInstrument('SENSEX')}
               className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-black rounded-md transition cursor-pointer ${
                 selectedInstrument === 'SENSEX'
-                  ? 'bg-purple-600 text-white shadow-2xs'
+                  ? 'bg-slate-900 text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >

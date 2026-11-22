@@ -252,11 +252,11 @@ export default function TradingChart({
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#16a34a',
-      downColor: '#dc2626',
+      upColor: '#059669',
+      downColor: '#e11d48',
       borderVisible: false,
-      wickUpColor: '#16a34a',
-      wickDownColor: '#dc2626'
+      wickUpColor: '#059669',
+      wickDownColor: '#e11d48'
     });
 
     if (candles && candles.length > 0) {
@@ -360,30 +360,30 @@ export default function TradingChart({
           title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${entryLinePrice}`
         });
 
-        // 2. Target 1 Line (Green Dashed)
+        // 2. Target 1 Line (Emerald Dashed)
         candleSeries.createPriceLine({
           price: target1LinePrice,
-          color: '#16a34a',
+          color: '#059669',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
           title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+18%)`
         });
 
-        // 3. Target 2 Line (Emerald Dashed)
+        // 3. Target 2 Line (Deep Emerald Dashed)
         candleSeries.createPriceLine({
           price: target2LinePrice,
-          color: '#059669',
+          color: '#047857',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
           title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${target2LinePrice} (+45%)`
         });
 
-        // 4. Stop Loss Line (Red Dashed)
+        // 4. Stop Loss Line (Rose Dashed)
         candleSeries.createPriceLine({
           price: slLinePrice,
-          color: '#dc2626',
+          color: '#e11d48',
           lineWidth: 2,
           lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
@@ -436,7 +436,7 @@ export default function TradingChart({
               : (chartMode === 'OPTION'
                 ? `BUY ENTRY @ ₹${badgeEntryPrice}`
                 : (isCe ? `BUY CALL ENTRY @ ₹${badgeEntryPrice}` : `BUY PUT ENTRY @ ₹${badgeEntryPrice}`)),
-            bgColor: isCe ? '#16a34a' : '#dc2626'
+            bgColor: isCe ? '#059669' : '#e11d48'
           });
         }
 
@@ -463,7 +463,7 @@ export default function TradingChart({
               : (chartMode === 'OPTION'
                 ? (isTargetHit ? `TARGET 1 HIT @ ₹${badgeExitPrice} (${pnlText})` : `STOP LOSS HIT @ ₹${badgeExitPrice} (${pnlText})`)
                 : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`)),
-            bgColor: isTargetHit ? '#16a34a' : '#dc2626'
+            bgColor: isTargetHit ? '#059669' : '#e11d48'
           });
         }
 
@@ -563,16 +563,16 @@ export default function TradingChart({
 
         {/* Center: Live Chart Lines Legend */}
         <div className="hidden sm:flex items-center gap-3 text-[10px] font-sans font-medium">
-          <div className="flex items-center gap-1 text-[#387ed1]">
-            <span className="w-2.5 h-0.5 bg-[#387ed1] inline-block"></span>
+          <div className="flex items-center gap-1 text-blue-600">
+            <span className="w-2.5 h-0.5 bg-blue-600 inline-block"></span>
             <span>{chartMode === 'OPTION' ? `Entry @ ₹${baseEntryPrice}` : 'Entry Line'}</span>
           </div>
-          <div className="flex items-center gap-1 text-[#00a86b]">
-            <span className="w-2.5 h-0.5 bg-[#00a86b] inline-block"></span>
+          <div className="flex items-center gap-1 text-emerald-600">
+            <span className="w-2.5 h-0.5 bg-emerald-600 inline-block"></span>
             <span>{chartMode === 'OPTION' ? `Target 1 @ ₹${target1Price}` : 'Targets 1 & 2'}</span>
           </div>
-          <div className="flex items-center gap-1 text-[#df514c]">
-            <span className="w-2.5 h-0.5 bg-[#df514c] inline-block"></span>
+          <div className="flex items-center gap-1 text-rose-600">
+            <span className="w-2.5 h-0.5 bg-rose-600 inline-block"></span>
             <span>{chartMode === 'OPTION' ? `SL @ ₹${slPrice}` : 'Stop Loss'}</span>
           </div>
         </div>
@@ -583,7 +583,7 @@ export default function TradingChart({
             <button
               onClick={() => setShowVWAP(!showVWAP)}
               className={`px-2 py-0.5 text-[10px] rounded font-medium border transition cursor-pointer ${showVWAP
-                ? 'bg-[#e8f0fe] text-[#387ed1] border-[#bcd0ee]'
+                ? 'bg-blue-50 text-blue-600 border-blue-200'
                 : 'bg-white text-slate-400 border-slate-200'
                 }`}
             >

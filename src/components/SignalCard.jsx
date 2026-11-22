@@ -134,15 +134,15 @@ export default function SignalCard({
               </div>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
                 {activeSignal.status === 'TARGET_HIT' ? (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded font-mono bg-emerald-100 text-emerald-800">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md font-mono bg-emerald-50 text-emerald-700 border border-emerald-200">
                     Target Achieved
                   </span>
                 ) : activeSignal.status === 'SL_HIT' ? (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded font-mono bg-rose-100 text-rose-800">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md font-mono bg-rose-50 text-rose-700 border border-rose-200">
                     SL Hit
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded font-mono bg-blue-50 text-blue-700 border border-blue-200">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md font-mono bg-blue-50 text-blue-700 border border-blue-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
                     LIVE ACTIVE
                   </span>
@@ -162,8 +162,8 @@ export default function SignalCard({
               onClick={() => onToggleChartMode(chartMode === 'OPTION' ? 'SPOT' : 'OPTION')}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer shadow-2xs border ${
                 chartMode === 'OPTION'
-                  ? 'bg-emerald-600 text-white border-emerald-700 hover:bg-emerald-700'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200/90 hover:bg-emerald-100'
+                  ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
               }`}
               title={chartMode === 'OPTION' ? 'Switch back to Spot Index Chart' : `View Zerodha-style ${activeSignal.strikeName} Option Chart`}
             >
@@ -270,40 +270,40 @@ export default function SignalCard({
             </div>
 
             {/* 2. STOP LOSS */}
-            <div className="p-2 rounded bg-slate-50 border border-slate-200">
-              <span className="text-[9px] font-bold text-[#df514c] uppercase tracking-wider block">
+            <div className="p-2 rounded-lg bg-rose-50/70 border border-rose-200/80">
+              <span className="text-[9px] font-bold text-rose-700 uppercase tracking-wider block">
                 STOP LOSS (-14%)
               </span>
-              <div className="text-sm font-bold font-mono text-[#df514c] mt-0.5">
+              <div className="text-sm font-bold font-mono text-rose-700 mt-0.5">
                 ₹{slPrice.toFixed(1)}
               </div>
-              <span className="text-[10px] text-[#df514c] font-mono block">
+              <span className="text-[10px] text-rose-600 font-mono block">
                 -₹{slRisk.toLocaleString('en-IN')} Risk
               </span>
             </div>
 
             {/* 3. TARGET 1 */}
-            <div className="p-2 rounded bg-slate-50 border border-slate-200">
-              <span className="text-[9px] font-bold text-[#00a86b] uppercase tracking-wider block">
+            <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
+              <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block">
                 TARGET 1 (+18%)
               </span>
-              <div className="text-sm font-bold font-mono text-[#00a86b] mt-0.5">
+              <div className="text-sm font-bold font-mono text-emerald-700 mt-0.5">
                 ₹{target1Price.toFixed(1)}
               </div>
-              <span className="text-[10px] text-[#00a86b] font-mono block">
+              <span className="text-[10px] text-emerald-600 font-mono block">
                 +₹{target1Gain.toLocaleString('en-IN')} (50%)
               </span>
             </div>
 
             {/* 4. TARGET 2 */}
-            <div className="p-2 rounded bg-slate-50 border border-slate-200">
-              <span className="text-[9px] font-bold text-[#00a86b] uppercase tracking-wider block">
+            <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/80">
+              <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block">
                 TARGET 2 (+45%)
               </span>
-              <div className="text-sm font-bold font-mono text-[#00a86b] mt-0.5">
+              <div className="text-sm font-bold font-mono text-emerald-700 mt-0.5">
                 ₹{target2Price.toFixed(1)}
               </div>
-              <span className="text-[10px] text-[#00a86b] font-mono block">
+              <span className="text-[10px] text-emerald-600 font-mono block">
                 +₹{target2Gain.toLocaleString('en-IN')} (Max)
               </span>
             </div>
@@ -311,29 +311,29 @@ export default function SignalCard({
           </div>
 
           {/* V3 Pro Confluence Checkpoints */}
-          <div className="py-1 px-2 rounded bg-slate-50 border border-slate-200 grid grid-cols-2 sm:grid-cols-6 gap-1 text-[10px] text-slate-600">
+          <div className="py-1 px-2 rounded-lg bg-slate-50 border border-slate-200/80 grid grid-cols-2 sm:grid-cols-6 gap-1 text-[10px] text-slate-600">
             <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
               <span>3-Min Fast Trigger</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
               <span>15-Min ORB Filter</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
               <span>Day Open Rule</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
               <span>9/21 EMA Ribbon</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
               <span>Supertrend (10,3)</span>
             </span>
             <span className="flex items-center gap-1 font-medium">
-              <Check className="w-3 h-3 text-[#00a86b] stroke-[3]" />
+              <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
               <span>ADX &gt; 18 Trend</span>
             </span>
           </div>
@@ -342,9 +342,9 @@ export default function SignalCard({
           <div className="space-y-2 pt-1">
             <button
               onClick={() => onExecutePaperTrade({ ...activeSignal, lotSize: totalQty, lotCount })}
-              className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition active:scale-[0.98] text-white shadow-sm flex items-center justify-center gap-2 cursor-pointer ${isBuyCe
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                : 'bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700'
+              className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition active:scale-[0.98] text-white shadow-xs flex items-center justify-center gap-2 cursor-pointer ${isBuyCe
+                ? 'bg-emerald-600 hover:bg-emerald-700'
+                : 'bg-rose-600 hover:bg-rose-700'
                 }`}
             >
               <Zap className="w-4 h-4 fill-current" />
@@ -357,7 +357,7 @@ export default function SignalCard({
                 Margin Req: <strong className="text-slate-800 font-mono font-bold">₹{marginRequired.toLocaleString('en-IN')}</strong>
               </span>
               <span>
-                Risk : Reward <strong className="text-emerald-600 font-mono font-bold">1:1.3</strong> (Institutional R:R)
+                Risk : Reward <strong className="text-emerald-700 font-mono font-bold">1:1.3</strong> (Institutional R:R)
               </span>
             </div>
           </div>

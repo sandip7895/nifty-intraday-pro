@@ -160,7 +160,7 @@ export default function BacktestModal({
                 type="button"
                 onClick={() => handleInstrumentSwitch('SENSEX')}
                 className={`px-2 py-1 text-[10px] sm:text-xs font-black rounded transition cursor-pointer ${selectedInstrument === 'SENSEX'
-                    ? 'bg-purple-600 text-white shadow-2xs'
+                    ? 'bg-slate-900 text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900'
                   }`}
               >
@@ -172,7 +172,7 @@ export default function BacktestModal({
               onClick={() => loadRealBacktestData(selectedInstrument)}
               disabled={isLoading}
               title="Recalculate Backtest"
-              className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 hover:border-[#387ed1] hover:text-[#387ed1] text-slate-700 bg-white text-xs font-medium transition cursor-pointer shrink-0"
+              className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 hover:border-blue-500 hover:text-blue-600 text-slate-700 bg-white text-xs font-medium transition cursor-pointer shrink-0"
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Recalculate</span>
@@ -204,7 +204,7 @@ export default function BacktestModal({
                       applyFilter(p.id, startDate, endDate, allSessionsData, selectedInstrument);
                     }}
                     className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer ${datePreset === p.id && !showCustomPicker
-                        ? 'bg-[#387ed1] text-white shadow-2xs'
+                        ? 'bg-blue-600 text-white shadow-2xs'
                         : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
                       }`}
                   >
@@ -219,7 +219,7 @@ export default function BacktestModal({
                     if (next) setDatePreset('custom');
                   }}
                   className={`px-2 py-0.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${showCustomPicker || datePreset === 'custom'
-                      ? 'bg-[#387ed1] text-white shadow-2xs'
+                      ? 'bg-blue-600 text-white shadow-2xs'
                       : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
                     }`}
                 >
@@ -333,10 +333,10 @@ export default function BacktestModal({
                   Win Rate (Accuracy)
                 </span>
                 <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
-                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-[#00a86b] whitespace-nowrap">
+                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-emerald-600 whitespace-nowrap">
                     {backtestResult.winRate}%
                   </span>
-                  <span className="text-[9px] sm:text-[10px] text-[#00a86b] font-bold bg-[#e6f4ea] px-1 py-0.2 rounded whitespace-nowrap">
+                  <span className="text-[9px] sm:text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/70 px-1 py-0.2 rounded whitespace-nowrap">
                     {backtestResult.winningTrades}W / {backtestResult.losingTrades}L
                   </span>
                 </div>
@@ -348,7 +348,7 @@ export default function BacktestModal({
                   Net P&L (1 Lot • {lotQty} Qty)
                 </span>
                 <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
-                  <span className={`text-sm sm:text-base md:text-lg font-bold font-mono whitespace-nowrap ${backtestResult.netPnl >= 0 ? 'text-[#387ed1]' : 'text-rose-600'}`}>
+                  <span className={`text-sm sm:text-base md:text-lg font-bold font-mono whitespace-nowrap ${backtestResult.netPnl >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                     {backtestResult.netPnl >= 0 ? '+' : ''}₹{backtestResult.netPnl.toLocaleString('en-IN')}
                   </span>
                   <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium whitespace-nowrap">
@@ -368,7 +368,7 @@ export default function BacktestModal({
                   Max Drawdown (Risk)
                 </span>
                 <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-1.5 mt-0.5">
-                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-[#df514c] whitespace-nowrap">
+                  <span className="text-sm sm:text-base md:text-lg font-bold font-mono text-rose-600 whitespace-nowrap">
                     -₹{backtestResult.maxDrawdown.toLocaleString('en-IN')}
                   </span>
                   <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium whitespace-nowrap">
@@ -459,7 +459,7 @@ export default function BacktestModal({
                                   onClose();
                                 }
                               }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#387ed1] hover:bg-[#2b6cb0] text-white font-sans text-[11px] font-medium transition cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-sans text-[11px] font-semibold transition cursor-pointer shadow-2xs"
                             >
                               <RotateCcw className="w-3 h-3 text-white" />
                               <span>Replay Day</span>
