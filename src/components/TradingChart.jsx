@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   createChart,
   ColorType,
@@ -130,20 +130,21 @@ export default function TradingChart({
   chartMode: externalChartMode,
   onToggleChartMode
 }) {
+  const [internalChartMode, setInternalChartMode] = useState('SPOT');
+  const chartMode = externalChartMode !== undefined ? externalChartMode : internalChartMode;
+  const handleSetChartMode = onToggleChartMode || setInternalChartMode;
+  const [showVWAP, setShowVWAP] = useState(true);
+
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
   const vwapSeriesRef = useRef(null);
   const priceLinesRef = useRef([]);
   const primitiveRef = useRef(null);
+  const resizeObserverRef = useRef(null);
   const isInitializedRef = useRef(false);
   const prevModeRef = useRef(chartMode);
   const prevInstrumentRef = useRef(instrument);
-
-  const [internalChartMode, setInternalChartMode] = useState('SPOT');
-  const chartMode = externalChartMode !== undefined ? externalChartMode : internalChartMode;
-  const handleSetChartMode = onToggleChartMode || setInternalChartMode;
-  const [showVWAP, setShowVWAP] = useState(true);
 
   // When switching chartMode ('SPOT' vs 'OPTION') or instrument ('NIFTY' vs 'SENSEX'),
   // flag uninitialized so the chart fits the new view once smoothly
@@ -166,10 +167,10 @@ export default function TradingChart({
   const slPrice = activeSignal?.optionSl || Number((baseEntryPrice * 0.86).toFixed(1));
 
   // =========================================================================
-  // 1. CHART INSTANCE LIFECYCLE (Created ONCE on mount, NEVER destroyed on poll!)
+  // 1. CHART INSTANCE FACTORY (Created safely, auto-recovered if missing)
   // =========================================================================
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
+  const initChartInstance = useCallback(() => {
+    if (!chartContainerRef.current) return null;
 
     if (chartRef.current) {
       try {
@@ -292,6 +293,9 @@ export default function TradingChart({
     primitiveRef.current = null;
     isInitializedRef.current = false;
 
+    if (resizeObserverRef.current) {
+      resizeObserverRef.current.disconnect();
+    }
     const resizeObserver = new ResizeObserver(entries => {
       if (entries.length && chartRef.current) {
         const { width, height } = entries[0].contentRect;
@@ -302,9 +306,19 @@ export default function TradingChart({
     });
 
     resizeObserver.observe(container);
+    resizeObserverRef.current = resizeObserver;
+
+    return chart;
+  }, []);
+
+  useEffect(() => {
+    initChartInstance();
 
     return () => {
-      resizeObserver.disconnect();
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
       if (chartRef.current) {
         try {
           chartRef.current.remove();
@@ -318,12 +332,15 @@ export default function TradingChart({
         primitiveRef.current = null;
       }
     };
-  }, []); // Run ONCE on container mount!
+  }, [initChartInstance]);
 
   // =========================================================================
   // 2. SMOOTH REAL-TIME DATA & SIGNAL UPDATE (Updates in-place without blinking)
   // =========================================================================
   useEffect(() => {
+    if (!chartRef.current && chartContainerRef.current) {
+      initChartInstance();
+    }
     const chart = chartRef.current;
     const candleSeries = candleSeriesRef.current;
     const vwapSeries = vwapSeriesRef.current;
@@ -438,43 +455,47 @@ export default function TradingChart({
         ? slPrice
         : (isCe ? Number((spotEntry - spotSlPts).toFixed(2)) : Number((spotEntry + spotSlPts).toFixed(2)));
 
-      const l1 = candleSeries.createPriceLine({
-        price: entryLinePrice,
-        color: '#2563eb',
-        lineWidth: 2,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: true,
-        title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${entryLinePrice}`
-      });
+      try {
+        const l1 = candleSeries.createPriceLine({
+          price: entryLinePrice,
+          color: '#2563eb',
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${entryLinePrice}`
+        });
 
-      const l2 = candleSeries.createPriceLine({
-        price: target1LinePrice,
-        color: '#059669',
-        lineWidth: 2,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+18%)`
-      });
+        const l2 = candleSeries.createPriceLine({
+          price: target1LinePrice,
+          color: '#059669',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+18%)`
+        });
 
-      const l3 = candleSeries.createPriceLine({
-        price: target2LinePrice,
-        color: '#047857',
-        lineWidth: 2,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${target2LinePrice} (+45%)`
-      });
+        const l3 = candleSeries.createPriceLine({
+          price: target2LinePrice,
+          color: '#047857',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${target2LinePrice} (+45%)`
+        });
 
-      const l4 = candleSeries.createPriceLine({
-        price: slLinePrice,
-        color: '#e11d48',
-        lineWidth: 2,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: isMobileScreen ? 'SL' : `SL: ₹${slLinePrice} (-14%)`
-      });
+        const l4 = candleSeries.createPriceLine({
+          price: slLinePrice,
+          color: '#e11d48',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: isMobileScreen ? 'SL' : `SL: ₹${slLinePrice} (-14%)`
+        });
 
-      priceLinesRef.current = [l1, l2, l3, l4];
+        priceLinesRef.current = [l1, l2, l3, l4];
+      } catch (e) {
+        console.warn('Failed to create price lines:', e);
+      }
 
       // Determine exact Entry candle index
       let entryIdx = -1;
@@ -552,9 +573,13 @@ export default function TradingChart({
       }
 
       if (badges.length > 0) {
-        const prim = new SignalBadgesPrimitive(badges);
-        candleSeries.attachPrimitive(prim);
-        primitiveRef.current = prim;
+        try {
+          const prim = new SignalBadgesPrimitive(badges);
+          candleSeries.attachPrimitive(prim);
+          primitiveRef.current = prim;
+        } catch (e) {
+          console.warn('Failed to attach signal badges:', e);
+        }
       }
     }
 
