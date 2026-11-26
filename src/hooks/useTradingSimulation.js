@@ -133,9 +133,12 @@ export function useTradingSimulation() {
   const currentConfig = INSTRUMENTS[instrument] || INSTRUMENTS.NIFTY;
   const activeInstrumentRef = useRef(instrument);
   const lastOutcomeRef = useRef({}); // Track per-signal status so Target/SL chime fires ONCE live
+  const isFetchingRef = useRef(false); // Guard to prevent overlapping fetches during ultra-fast 3s polling
 
   // Fetch real market session for the selected instrument
   const loadRealMarketData = useCallback(async (targetInstrument = instrument, silent = false) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       if (!silent) setIsLoading(true);
       setError(null);
@@ -188,6 +191,7 @@ export function useTradingSimulation() {
       console.error(`Error fetching real market data for ${targetInstrument}:`, err);
       setError(err.message || 'Error loading live market data');
     } finally {
+      isFetchingRef.current = false;
       if (!silent) setIsLoading(false);
     }
   }, [instrument]);
@@ -201,7 +205,7 @@ export function useTradingSimulation() {
     setConfirmedTrade(null);
   }, [instrument]);
 
-  // Fetch on mount or when instrument changes + 10s live market polling
+  // Fetch on mount or when instrument changes + ultra-fast 3s live market polling
   useEffect(() => {
     activeInstrumentRef.current = instrument;
     loadRealMarketData(instrument, false);
@@ -209,10 +213,8 @@ export function useTradingSimulation() {
     const interval = setInterval(() => {
       const open = checkIsMarketOpen();
       setIsMarketOpen(open);
-      if (open) {
-        loadRealMarketData(instrument, true);
-      }
-    }, 10000); // 10s fast live refresh
+      loadRealMarketData(instrument, true);
+    }, 3000); // 3s ultra-fast live polling
 
     return () => clearInterval(interval);
   }, [instrument, loadRealMarketData]);

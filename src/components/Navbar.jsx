@@ -158,7 +158,7 @@ export default function Navbar({
               {isFeedDelayed
                 ? `${selectedInstrument === 'SENSEX' ? 'BSE' : 'NSE'} 15m Delayed`
                 : isMarketOpen
-                  ? (selectedInstrument === 'SENSEX' ? 'BSE Live' : 'NSE Live')
+                  ? (selectedInstrument === 'SENSEX' ? 'BSE Live (3s)' : 'NSE Live (3s)')
                   : 'Closed'}
             </span>
           </div>
