@@ -133,11 +133,27 @@ export default function TradingChart({
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
+  const vwapSeriesRef = useRef(null);
+  const priceLinesRef = useRef([]);
+  const primitiveRef = useRef(null);
+  const isInitializedRef = useRef(false);
+  const prevModeRef = useRef(chartMode);
+  const prevInstrumentRef = useRef(instrument);
 
   const [internalChartMode, setInternalChartMode] = useState('SPOT');
   const chartMode = externalChartMode !== undefined ? externalChartMode : internalChartMode;
   const handleSetChartMode = onToggleChartMode || setInternalChartMode;
   const [showVWAP, setShowVWAP] = useState(true);
+
+  // When switching chartMode ('SPOT' vs 'OPTION') or instrument ('NIFTY' vs 'SENSEX'),
+  // flag uninitialized so the chart fits the new view once smoothly
+  useEffect(() => {
+    if (prevModeRef.current !== chartMode || prevInstrumentRef.current !== instrument) {
+      prevModeRef.current = chartMode;
+      prevInstrumentRef.current = instrument;
+      isInitializedRef.current = false;
+    }
+  }, [chartMode, instrument]);
 
   const isSensex = instrument === 'SENSEX' || activeSignal?.instrument === 'SENSEX';
   const isCe = activeSignal ? activeSignal.action === 'BUY_CE' || !activeSignal.action?.includes('PE') : true;
@@ -149,6 +165,9 @@ export default function TradingChart({
   const target2Price = activeSignal?.optionTarget2 || Number((baseEntryPrice * 1.45).toFixed(1));
   const slPrice = activeSignal?.optionSl || Number((baseEntryPrice * 0.86).toFixed(1));
 
+  // =========================================================================
+  // 1. CHART INSTANCE LIFECYCLE (Created ONCE on mount, NEVER destroyed on poll!)
+  // =========================================================================
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
@@ -198,7 +217,7 @@ export default function TradingChart({
         horzLines: { color: '#f1f5f9' }
       },
       crosshair: {
-        mode: CrosshairMode.Normal, // Smooth continuous crosshair movement across the chart without sticking to candles
+        mode: CrosshairMode.Normal,
         vertLine: {
           color: '#94a3b8',
           width: 1,
@@ -231,14 +250,14 @@ export default function TradingChart({
           if (!timestamp) return null;
           const date = new Date(timestamp * 1000);
           switch (tickMarkType) {
-            case 0: // Year
+            case 0:
               return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
-            case 1: // Month
+            case 1:
               return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
-            case 2: // DayOfMonth
+            case 2:
               return date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' });
-            case 3: // Time
-            case 4: // TimeWithSeconds
+            case 3:
+            case 4:
             default:
               return date.toLocaleTimeString('en-IN', {
                 timeZone: 'Asia/Kolkata',
@@ -259,233 +278,19 @@ export default function TradingChart({
       wickDownColor: '#e11d48'
     });
 
-    if (candles && candles.length > 0) {
-      let formattedCandles = [];
-
-      if (chartMode === 'OPTION') {
-        const calcOptPrice = (spotDiff) => {
-          if (spotDiff <= 0) {
-            const effectiveDelta = Math.max(0.35, delta + (spotDiff / 600) * 0.15);
-            return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
-          } else {
-            // Gamma acceleration & IV expansion as option moves in-the-money, mirroring real broker option pricing
-            const effectiveDelta = Math.min(1.15, delta + (spotDiff / 250) * 0.55);
-            return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
-          }
-        };
-
-        formattedCandles = candles.map(c => {
-          const openDelta = isCe ? (c.open - spotEntry) : (spotEntry - c.open);
-          const highDelta = isCe ? (c.high - spotEntry) : (spotEntry - c.low);
-          const lowDelta = isCe ? (c.low - spotEntry) : (spotEntry - c.high);
-          const closeDelta = isCe ? (c.close - spotEntry) : (spotEntry - c.close);
-
-          const o = Number(calcOptPrice(openDelta).toFixed(2));
-          const h = Number(calcOptPrice(highDelta).toFixed(2));
-          const l = Number(calcOptPrice(lowDelta).toFixed(2));
-          const cl = Number(calcOptPrice(closeDelta).toFixed(2));
-          return {
-            time: c.time,
-            open: o,
-            high: Math.max(h, o, cl),
-            low: Math.min(l, o, cl),
-            close: cl
-          };
-        });
-      } else {
-        formattedCandles = candles.map(c => ({
-          time: c.time,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close
-        }));
-      }
-
-      candleSeries.setData(formattedCandles);
-
-      // VWAP Line (Blue)
-      if (showVWAP) {
-        let cumulativeTPV = 0;
-        let cumulativeVol = 0;
-        const vwapData = formattedCandles.map((c, idx) => {
-          const tp = (c.high + c.low + c.close) / 3;
-          const vol = candles[idx]?.volume || 1000;
-          cumulativeTPV += tp * vol;
-          cumulativeVol += vol;
-          return {
-            time: c.time,
-            value: Number((cumulativeTPV / cumulativeVol).toFixed(2))
-          };
-        });
-
-        const vwapSeries = chart.addSeries(LineSeries, {
-          color: '#2563eb',
-          lineWidth: 2,
-          title: 'VWAP',
-          priceLineVisible: false
-        });
-        vwapSeries.setData(vwapData);
-      }
-
-      // ==========================================
-      // VISIBLE TRADE LINES (ENTRY, TARGET, SL)
-      // ==========================================
-      if (activeSignal && activeSignal.action !== 'WAIT') {
-        const isMobileScreen = (container.clientWidth || window.innerWidth) < 640;
-
-        // Trade Levels: In OPTION mode we use Option Premium in ₹, in SPOT mode we use Spot Index
-        const spotT1Pts = Number(((target1Price - baseEntryPrice) / delta).toFixed(1));
-        const spotT2Pts = Number(((target2Price - baseEntryPrice) / delta).toFixed(1));
-        const spotSlPts = Number(((baseEntryPrice - slPrice) / delta).toFixed(1));
-
-        const entryLinePrice = chartMode === 'OPTION' ? baseEntryPrice : spotEntry;
-        const target1LinePrice = chartMode === 'OPTION'
-          ? target1Price
-          : (isCe ? Number((spotEntry + spotT1Pts).toFixed(2)) : Number((spotEntry - spotT1Pts).toFixed(2)));
-        const target2LinePrice = chartMode === 'OPTION'
-          ? target2Price
-          : (isCe ? Number((spotEntry + spotT2Pts).toFixed(2)) : Number((spotEntry - spotT2Pts).toFixed(2)));
-        const slLinePrice = chartMode === 'OPTION'
-          ? slPrice
-          : (isCe ? Number((spotEntry - spotSlPts).toFixed(2)) : Number((spotEntry + spotSlPts).toFixed(2)));
-
-        // 1. Entry Line (Blue Solid)
-        candleSeries.createPriceLine({
-          price: entryLinePrice,
-          color: '#2563eb',
-          lineWidth: 2,
-          lineStyle: LineStyle.Solid,
-          axisLabelVisible: true,
-          title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${entryLinePrice}`
-        });
-
-        // 2. Target 1 Line (Emerald Dashed)
-        candleSeries.createPriceLine({
-          price: target1LinePrice,
-          color: '#059669',
-          lineWidth: 2,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+18%)`
-        });
-
-        // 3. Target 2 Line (Deep Emerald Dashed)
-        candleSeries.createPriceLine({
-          price: target2LinePrice,
-          color: '#047857',
-          lineWidth: 2,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${target2LinePrice} (+45%)`
-        });
-
-        // 4. Stop Loss Line (Rose Dashed)
-        candleSeries.createPriceLine({
-          price: slLinePrice,
-          color: '#e11d48',
-          lineWidth: 2,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: isMobileScreen ? 'SL' : `SL: ₹${slLinePrice} (-14%)`
-        });
-
-        // Determine exact Entry candle index
-        let entryIdx = -1;
-        if (typeof activeSignal.entryCandleIndex === 'number' && activeSignal.entryCandleIndex >= 0 && activeSignal.entryCandleIndex < formattedCandles.length) {
-          entryIdx = activeSignal.entryCandleIndex;
-        } else if (activeSignal.timestamp && activeSignal.timestamp !== '--') {
-          // Robust timestamp parser (e.g. "09:33 am" maps accurately to the 09:30-09:35 candle)
-          const match = activeSignal.timestamp.match(/(\d+):(\d+)\s*(am|pm)?/i);
-          if (match) {
-            let h = parseInt(match[1], 10);
-            const m = parseInt(match[2], 10);
-            const ampm = match[3]?.toLowerCase();
-            if (ampm === 'pm' && h < 12) h += 12;
-            if (ampm === 'am' && h === 12) h = 0;
-            const signalTotalMinutes = h * 60 + m;
-
-            entryIdx = formattedCandles.findIndex(c => {
-              const cDate = new Date(c.time * 1000);
-              const cH = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
-              const cM = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', minute: 'numeric' }));
-              const cTotalMinutes = cH * 60 + cM;
-              return signalTotalMinutes >= cTotalMinutes && signalTotalMinutes < cTotalMinutes + 5;
-            });
-          }
-        }
-
-        if (entryIdx === -1) {
-          entryIdx = formattedCandles.findIndex(c => Math.abs(c.close - entryLinePrice) < (chartMode === 'OPTION' ? 4 : 8));
-        }
-        if (entryIdx === -1) {
-          entryIdx = formattedCandles.length > 3 ? 3 : 0; // Default to 09:30 AM (Candle 3), never 09:15 open
-        }
-
-        const badges = [];
-
-        if (entryIdx >= 0 && formattedCandles[entryIdx]) {
-          const entryCandle = formattedCandles[entryIdx];
-          const badgeEntryPrice = chartMode === 'OPTION' ? baseEntryPrice : spotEntry;
-          badges.push({
-            time: entryCandle.time,
-            price: isCe ? entryCandle.low : entryCandle.high,
-            isAbove: !isCe, // For CE, placed below pointing up; for PE, placed above pointing down
-            text: isMobileScreen
-              ? (isCe ? '▲ BUY CALL' : '▼ BUY PUT')
-              : (chartMode === 'OPTION'
-                ? `BUY ENTRY @ ₹${badgeEntryPrice}`
-                : (isCe ? `BUY CALL ENTRY @ ₹${badgeEntryPrice}` : `BUY PUT ENTRY @ ₹${badgeEntryPrice}`)),
-            bgColor: isCe ? '#059669' : '#e11d48'
-          });
-        }
-
-        // Determine exact Exit candle index (ONLY when trade is genuinely finalized as TARGET_HIT or SL_HIT)
-        const isFinalizedOutcome = activeSignal.status === 'TARGET_HIT' || activeSignal.status === 'SL_HIT';
-        let exitIdx = -1;
-        if (isFinalizedOutcome && typeof activeSignal.exitCandleIndex === 'number' && activeSignal.exitCandleIndex >= 0 && activeSignal.exitCandleIndex < formattedCandles.length) {
-          exitIdx = activeSignal.exitCandleIndex;
-        }
-
-        if (isFinalizedOutcome && exitIdx >= 0 && exitIdx >= entryIdx && formattedCandles[exitIdx]) {
-          const exitCandle = formattedCandles[exitIdx];
-          const isTargetHit = activeSignal.status === 'TARGET_HIT' || activeSignal.result?.includes('Target');
-          const isSlHit = activeSignal.status === 'SL_HIT' || activeSignal.result?.includes('Stop Loss');
-          const pnlText = activeSignal.pnl ? (activeSignal.pnl > 0 ? `+₹${activeSignal.pnl}` : `-₹${Math.abs(activeSignal.pnl)}`) : '+₹2048';
-          const badgeExitPrice = chartMode === 'OPTION' ? (isTargetHit ? target1Price : slPrice) : null;
-
-          badges.push({
-            time: exitCandle.time,
-            price: isCe ? exitCandle.high : exitCandle.low,
-            isAbove: isCe, // Placed on opposite side of entry so they NEVER overlap!
-            text: isMobileScreen
-              ? (isTargetHit ? `🎯 TGT HIT` : `🛑 SL HIT`)
-              : (chartMode === 'OPTION'
-                ? (isTargetHit ? `TARGET 1 HIT @ ₹${badgeExitPrice} (${pnlText})` : `STOP LOSS HIT @ ₹${badgeExitPrice} (${pnlText})`)
-                : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`)),
-            bgColor: isTargetHit ? '#059669' : '#e11d48'
-          });
-        }
-
-        if (badges.length > 0) {
-          candleSeries.attachPrimitive(new SignalBadgesPrimitive(badges));
-        }
-      }
-
-      if (formattedCandles.length >= 25) {
-        chart.timeScale().fitContent();
-      } else {
-        // Early morning session (few candles): keep crisp normal candlestick width instead of stretching 1-2 candles across the whole chart
-        chart.timeScale().applyOptions({
-          barSpacing: 14,
-          rightOffset: Math.max(12, 40 - formattedCandles.length)
-        });
-        chart.timeScale().scrollToRealTime();
-      }
-    }
+    const vwapSeries = chart.addSeries(LineSeries, {
+      color: '#2563eb',
+      lineWidth: 2,
+      title: 'VWAP',
+      priceLineVisible: false
+    });
 
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
+    vwapSeriesRef.current = vwapSeries;
+    priceLinesRef.current = [];
+    primitiveRef.current = null;
+    isInitializedRef.current = false;
 
     const resizeObserver = new ResizeObserver(entries => {
       if (entries.length && chartRef.current) {
@@ -507,10 +312,269 @@ export default function TradingChart({
           // Ignore
         }
         chartRef.current = null;
+        candleSeriesRef.current = null;
+        vwapSeriesRef.current = null;
+        priceLinesRef.current = [];
+        primitiveRef.current = null;
       }
     };
+  }, []); // Run ONCE on container mount!
+
+  // =========================================================================
+  // 2. SMOOTH REAL-TIME DATA & SIGNAL UPDATE (Updates in-place without blinking)
+  // =========================================================================
+  useEffect(() => {
+    const chart = chartRef.current;
+    const candleSeries = candleSeriesRef.current;
+    const vwapSeries = vwapSeriesRef.current;
+    if (!chart || !candleSeries || !candles || candles.length === 0) return;
+
+    let formattedCandles = [];
+
+    if (chartMode === 'OPTION') {
+      const calcOptPrice = (spotDiff) => {
+        if (spotDiff <= 0) {
+          const effectiveDelta = Math.max(0.35, delta + (spotDiff / 600) * 0.15);
+          return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
+        } else {
+          // Gamma acceleration & IV expansion as option moves in-the-money, mirroring real broker option pricing
+          const effectiveDelta = Math.min(1.15, delta + (spotDiff / 250) * 0.55);
+          return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
+        }
+      };
+
+      formattedCandles = candles.map(c => {
+        const openDelta = isCe ? (c.open - spotEntry) : (spotEntry - c.open);
+        const highDelta = isCe ? (c.high - spotEntry) : (spotEntry - c.low);
+        const lowDelta = isCe ? (c.low - spotEntry) : (spotEntry - c.high);
+        const closeDelta = isCe ? (c.close - spotEntry) : (spotEntry - c.close);
+
+        const o = Number(calcOptPrice(openDelta).toFixed(2));
+        const h = Number(calcOptPrice(highDelta).toFixed(2));
+        const l = Number(calcOptPrice(lowDelta).toFixed(2));
+        const cl = Number(calcOptPrice(closeDelta).toFixed(2));
+        return {
+          time: c.time,
+          open: o,
+          high: Math.max(h, o, cl),
+          low: Math.min(l, o, cl),
+          close: cl
+        };
+      });
+    } else {
+      formattedCandles = candles.map(c => ({
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close
+      }));
+    }
+
+    // Seamless in-place candle series data update (Zero DOM rebuild)
+    candleSeries.setData(formattedCandles);
+
+    // VWAP Line (Blue)
+    if (vwapSeries) {
+      if (showVWAP) {
+        let cumulativeTPV = 0;
+        let cumulativeVol = 0;
+        const vwapData = formattedCandles.map((c, idx) => {
+          const tp = (c.high + c.low + c.close) / 3;
+          const vol = candles[idx]?.volume || 1000;
+          cumulativeTPV += tp * vol;
+          cumulativeVol += vol;
+          return {
+            time: c.time,
+            value: Number((cumulativeTPV / cumulativeVol).toFixed(2))
+          };
+        });
+        vwapSeries.setData(vwapData);
+      } else {
+        vwapSeries.setData([]);
+      }
+    }
+
+    // Clean up previous price lines without recreating the chart canvas
+    priceLinesRef.current.forEach(pl => {
+      try {
+        candleSeries.removePriceLine(pl);
+      } catch (e) {
+        // ignore
+      }
+    });
+    priceLinesRef.current = [];
+
+    // Detach previous badge primitive
+    if (primitiveRef.current) {
+      try {
+        candleSeries.detachPrimitive(primitiveRef.current);
+      } catch (e) {
+        // ignore
+      }
+      primitiveRef.current = null;
+    }
+
+    // ==========================================
+    // VISIBLE TRADE LINES (ENTRY, TARGET, SL)
+    // ==========================================
+    if (activeSignal && activeSignal.action !== 'WAIT') {
+      const container = chartContainerRef.current;
+      const isMobileScreen = (container?.clientWidth || window.innerWidth) < 640;
+
+      // Trade Levels: In OPTION mode we use Option Premium in ₹, in SPOT mode we use Spot Index
+      const spotT1Pts = Number(((target1Price - baseEntryPrice) / delta).toFixed(1));
+      const spotT2Pts = Number(((target2Price - baseEntryPrice) / delta).toFixed(1));
+      const spotSlPts = Number(((baseEntryPrice - slPrice) / delta).toFixed(1));
+
+      const entryLinePrice = chartMode === 'OPTION' ? baseEntryPrice : spotEntry;
+      const target1LinePrice = chartMode === 'OPTION'
+        ? target1Price
+        : (isCe ? Number((spotEntry + spotT1Pts).toFixed(2)) : Number((spotEntry - spotT1Pts).toFixed(2)));
+      const target2LinePrice = chartMode === 'OPTION'
+        ? target2Price
+        : (isCe ? Number((spotEntry + spotT2Pts).toFixed(2)) : Number((spotEntry - spotT2Pts).toFixed(2)));
+      const slLinePrice = chartMode === 'OPTION'
+        ? slPrice
+        : (isCe ? Number((spotEntry - spotSlPts).toFixed(2)) : Number((spotEntry + spotSlPts).toFixed(2)));
+
+      const l1 = candleSeries.createPriceLine({
+        price: entryLinePrice,
+        color: '#2563eb',
+        lineWidth: 2,
+        lineStyle: LineStyle.Solid,
+        axisLabelVisible: true,
+        title: isMobileScreen ? 'ENTRY' : `BUY ENTRY @ ₹${entryLinePrice}`
+      });
+
+      const l2 = candleSeries.createPriceLine({
+        price: target1LinePrice,
+        color: '#059669',
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: isMobileScreen ? 'TGT 1' : `TARGET 1: ₹${target1LinePrice} (+18%)`
+      });
+
+      const l3 = candleSeries.createPriceLine({
+        price: target2LinePrice,
+        color: '#047857',
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: isMobileScreen ? 'TGT 2' : `TARGET 2: ₹${target2LinePrice} (+45%)`
+      });
+
+      const l4 = candleSeries.createPriceLine({
+        price: slLinePrice,
+        color: '#e11d48',
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: isMobileScreen ? 'SL' : `SL: ₹${slLinePrice} (-14%)`
+      });
+
+      priceLinesRef.current = [l1, l2, l3, l4];
+
+      // Determine exact Entry candle index
+      let entryIdx = -1;
+      if (typeof activeSignal.entryCandleIndex === 'number' && activeSignal.entryCandleIndex >= 0 && activeSignal.entryCandleIndex < formattedCandles.length) {
+        entryIdx = activeSignal.entryCandleIndex;
+      } else if (activeSignal.timestamp && activeSignal.timestamp !== '--') {
+        const match = activeSignal.timestamp.match(/(\d+):(\d+)\s*(am|pm)?/i);
+        if (match) {
+          let h = parseInt(match[1], 10);
+          const m = parseInt(match[2], 10);
+          const ampm = match[3]?.toLowerCase();
+          if (ampm === 'pm' && h < 12) h += 12;
+          if (ampm === 'am' && h === 12) h = 0;
+          const signalTotalMinutes = h * 60 + m;
+
+          entryIdx = formattedCandles.findIndex(c => {
+            const cDate = new Date(c.time * 1000);
+            const cH = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }));
+            const cM = Number(cDate.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', minute: 'numeric' }));
+            const cTotalMinutes = cH * 60 + cM;
+            return signalTotalMinutes >= cTotalMinutes && signalTotalMinutes < cTotalMinutes + 5;
+          });
+        }
+      }
+
+      if (entryIdx === -1) {
+        entryIdx = formattedCandles.findIndex(c => Math.abs(c.close - entryLinePrice) < (chartMode === 'OPTION' ? 4 : 8));
+      }
+      if (entryIdx === -1) {
+        entryIdx = formattedCandles.length > 3 ? 3 : 0;
+      }
+
+      const badges = [];
+
+      if (entryIdx >= 0 && formattedCandles[entryIdx]) {
+        const entryCandle = formattedCandles[entryIdx];
+        const badgeEntryPrice = chartMode === 'OPTION' ? baseEntryPrice : spotEntry;
+        badges.push({
+          time: entryCandle.time,
+          price: isCe ? entryCandle.low : entryCandle.high,
+          isAbove: !isCe,
+          text: isMobileScreen
+            ? (isCe ? '▲ BUY CALL' : '▼ BUY PUT')
+            : (chartMode === 'OPTION'
+              ? `BUY ENTRY @ ₹${badgeEntryPrice}`
+              : (isCe ? `BUY CALL ENTRY @ ₹${badgeEntryPrice}` : `BUY PUT ENTRY @ ₹${badgeEntryPrice}`)),
+          bgColor: isCe ? '#059669' : '#e11d48'
+        });
+      }
+
+      // Determine exact Exit candle index (ONLY when trade is genuinely finalized as TARGET_HIT or SL_HIT)
+      const isFinalizedOutcome = activeSignal.status === 'TARGET_HIT' || activeSignal.status === 'SL_HIT';
+      let exitIdx = -1;
+      if (isFinalizedOutcome && typeof activeSignal.exitCandleIndex === 'number' && activeSignal.exitCandleIndex >= 0 && activeSignal.exitCandleIndex < formattedCandles.length) {
+        exitIdx = activeSignal.exitCandleIndex;
+      }
+
+      if (isFinalizedOutcome && exitIdx >= 0 && exitIdx >= entryIdx && formattedCandles[exitIdx]) {
+        const exitCandle = formattedCandles[exitIdx];
+        const isTargetHit = activeSignal.status === 'TARGET_HIT' || activeSignal.result?.includes('Target');
+        const pnlText = activeSignal.pnl ? (activeSignal.pnl > 0 ? `+₹${activeSignal.pnl}` : `-₹${Math.abs(activeSignal.pnl)}`) : '+₹2048';
+        const badgeExitPrice = chartMode === 'OPTION' ? (isTargetHit ? target1Price : slPrice) : null;
+
+        badges.push({
+          time: exitCandle.time,
+          price: isCe ? exitCandle.high : exitCandle.low,
+          isAbove: isCe,
+          text: isMobileScreen
+            ? (isTargetHit ? `🎯 TGT HIT` : `🛑 SL HIT`)
+            : (chartMode === 'OPTION'
+              ? (isTargetHit ? `TARGET 1 HIT @ ₹${badgeExitPrice} (${pnlText})` : `STOP LOSS HIT @ ₹${badgeExitPrice} (${pnlText})`)
+              : (isTargetHit ? `TARGET 1 HIT (${pnlText})` : `STOP LOSS HIT (${pnlText})`)),
+          bgColor: isTargetHit ? '#059669' : '#e11d48'
+        });
+      }
+
+      if (badges.length > 0) {
+        const prim = new SignalBadgesPrimitive(badges);
+        candleSeries.attachPrimitive(prim);
+        primitiveRef.current = prim;
+      }
+    }
+
+    // Fit / scroll to real time ONLY on initial load or explicit mode/instrument switch!
+    // NEVER on the recurring 20-second live polling refreshes, keeping zoom and pan rock-steady!
+    if (!isInitializedRef.current && formattedCandles.length > 0) {
+      if (formattedCandles.length >= 25) {
+        chart.timeScale().fitContent();
+      } else {
+        chart.timeScale().applyOptions({
+          barSpacing: 14,
+          rightOffset: Math.max(12, 40 - formattedCandles.length)
+        });
+        chart.timeScale().scrollToRealTime();
+      }
+      isInitializedRef.current = true;
+    }
   }, [
     chartMode,
+    instrument,
     candles,
     showVWAP,
     activeSignal?.action,
