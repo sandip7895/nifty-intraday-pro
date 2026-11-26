@@ -7,7 +7,8 @@ import {
 import {
   INSTRUMENTS,
   fetchLatestSession,
-  updateLockedTradeStatus
+  updateLockedTradeStatus,
+  calculateDynamicOptionPremium
 } from '../services/marketDataService';
 import {
   playSignalChime,
@@ -267,21 +268,32 @@ export function useTradingSimulation() {
     exitCandleIndex: confirmedTrade.exitCandleIndex,
     exitPrice: confirmedTrade.exitPrice,
     pnl: confirmedTrade.pnl
-  } : {
-    action: 'WAIT',
-    actionText: 'Awaiting Setup',
-    strikeName: `${currentConfig.shortName} ${Math.round(currentPrice / currentConfig.strikeStep) * currentConfig.strikeStep} CE`,
-    instrument: currentConfig.id,
-    lotSize: currentConfig.lotSize,
-    spotTrigger: currentPrice,
-    optionEntry: currentConfig.defaultCeEntry,
-    currentOptPrice: currentConfig.defaultCeEntry,
-    optionSl: Number((currentConfig.defaultCeEntry * (1 - currentConfig.slPct)).toFixed(1)),
-    optionTarget1: Number((currentConfig.defaultCeEntry * (1 + currentConfig.target1Pct)).toFixed(1)),
-    optionTarget2: Number((currentConfig.defaultCeEntry * (1 + currentConfig.target2Pct)).toFixed(1)),
-    accuracy: 0,
-    timestamp: '--'
-  };
+  } : (() => {
+    const waitAtmStrike = Math.round(currentPrice / currentConfig.strikeStep) * currentConfig.strikeStep;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const dynamicWaitEntry = calculateDynamicOptionPremium(
+      currentPrice,
+      waitAtmStrike,
+      'BUY_CE',
+      nowSec,
+      instrument
+    );
+    return {
+      action: 'WAIT',
+      actionText: 'Awaiting Setup',
+      strikeName: `${currentConfig.shortName} ${waitAtmStrike} CE`,
+      instrument: currentConfig.id,
+      lotSize: currentConfig.lotSize,
+      spotTrigger: currentPrice,
+      optionEntry: dynamicWaitEntry,
+      currentOptPrice: dynamicWaitEntry,
+      optionSl: Number((dynamicWaitEntry * (1 - currentConfig.slPct)).toFixed(1)),
+      optionTarget1: Number((dynamicWaitEntry * (1 + currentConfig.target1Pct)).toFixed(1)),
+      optionTarget2: Number((dynamicWaitEntry * (1 + currentConfig.target2Pct)).toFixed(1)),
+      accuracy: 0,
+      timestamp: '--'
+    };
+  })();
 
   // Audio alert chime when a new non-locked signal appears
   const lastSignalRef = useRef(null);

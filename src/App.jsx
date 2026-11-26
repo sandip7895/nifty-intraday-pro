@@ -42,14 +42,6 @@ export default function App() {
   const [replayedDay, setReplayedDay] = useState(null);
   const [mobileTab, setMobileTab] = useState('all'); // 'all', 'chart', 'signal'
   const [chartMode, setChartMode] = useState('SPOT'); // 'SPOT' | 'OPTION'
-  const [customPremiumMap, setCustomPremiumMap] = useState(() => {
-    try {
-      const saved = localStorage.getItem('nifty_pro_custom_premiums');
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
 
   // Active display data (live session or historical replay session)
   const isReplaying = Boolean(replayedDay);
@@ -87,64 +79,6 @@ export default function App() {
     exitPrice: replayedDay.trade.exitPrice,
     pnl: replayedDay.trade.pnl
   } : liveActiveSignal;
-
-  // Instant Live Premium Sync: allow user to enter real broker LTP (e.g. ₹190) so Entry, Target 1/2, SL & Option Chart all sync 100%
-  const signalKey = activeSignal && activeSignal.action !== 'WAIT'
-    ? `${activeSignal.instrument || instrument}_${activeSignal.strikeName}_${activeSignal.timestamp}_${isReplaying ? replayedDay?.trade?.date : 'live'}`
-    : null;
-  const customEntryVal = signalKey ? Number(customPremiumMap[signalKey]) : 0;
-
-  let effectiveSignal = activeSignal;
-  if (activeSignal && activeSignal.action !== 'WAIT' && customEntryVal > 0) {
-    const isSensexSig = activeSignal.instrument === 'SENSEX' || activeSignal.strikeName?.includes('SENSEX');
-    const isCeSig = activeSignal.action === 'BUY_CE';
-    const sigDelta = isSensexSig ? 0.50 : 0.52;
-    const lotQty = activeSignal.lotSize || (isSensexSig ? 20 : 65);
-
-    const newT1 = Number((customEntryVal * 1.18).toFixed(1));
-    const newT2 = Number((customEntryVal * 1.45).toFixed(1));
-    const newSl = Number((customEntryVal * 0.86).toFixed(1));
-
-    const spotDiff = (currentPrice && activeSignal.spotTrigger)
-      ? (isCeSig ? (currentPrice - activeSignal.spotTrigger) : (activeSignal.spotTrigger - currentPrice))
-      : 0;
-    const liveSyncedLtp = Number(Math.max(1, customEntryVal + spotDiff * sigDelta).toFixed(1));
-
-    let syncedExit = liveSyncedLtp;
-    if (activeSignal.status === 'TARGET_HIT') syncedExit = newT1;
-    else if (activeSignal.status === 'SL_HIT') syncedExit = newSl;
-
-    effectiveSignal = {
-      ...activeSignal,
-      optionEntry: customEntryVal,
-      optionTarget1: newT1,
-      optionTarget2: newT2,
-      optionSl: newSl,
-      currentOptPrice: activeSignal.status === 'OPEN' ? liveSyncedLtp : syncedExit,
-      exitPrice: syncedExit,
-      pnl: Number(((syncedExit - customEntryVal) * lotQty).toFixed(2)),
-      isCustomPremium: true
-    };
-  }
-
-  const handleSetCustomPremium = (priceNum) => {
-    if (!signalKey || !priceNum || priceNum <= 0) return;
-    setCustomPremiumMap(prev => {
-      const next = { ...prev, [signalKey]: Number(priceNum.toFixed(1)) };
-      try { localStorage.setItem('nifty_pro_custom_premiums', JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
-  };
-
-  const handleClearCustomPremium = () => {
-    if (!signalKey) return;
-    setCustomPremiumMap(prev => {
-      const next = { ...prev };
-      delete next[signalKey];
-      try { localStorage.setItem('nifty_pro_custom_premiums', JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
-  };
 
   const handleLoadDayToChart = (candles, trade) => {
     setReplayedDay({ candles, trade });
@@ -260,7 +194,7 @@ export default function App() {
               cpr={liveCpr}
               currentVWAP={currentVWAP}
               currentPrice={currentPrice}
-              activeSignal={effectiveSignal}
+              activeSignal={activeSignal}
               onOpenBacktest={() => setIsBacktestModalOpen(true)}
               chartMode={chartMode}
               onToggleChartMode={setChartMode}
@@ -271,11 +205,9 @@ export default function App() {
           <div className={`col-span-12 lg:col-span-4 ${mobileTab === 'all' || mobileTab === 'signal' ? 'flex' : 'hidden'
             } lg:flex flex-col gap-2.5 min-h-0 lg:h-full lg:overflow-y-auto`}>
             <SignalCard
-              activeSignal={effectiveSignal}
+              activeSignal={activeSignal}
               currentSpotPrice={currentPrice}
               onExecutePaperTrade={executePaperTrade}
-              onSetCustomPremium={handleSetCustomPremium}
-              onClearCustomPremium={handleClearCustomPremium}
               chartMode={chartMode}
               onToggleChartMode={(mode) => {
                 setChartMode(mode);

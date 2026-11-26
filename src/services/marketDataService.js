@@ -88,6 +88,71 @@ export function parseYahooCandles(result) {
   return Array.from(bucketMap.values()).sort((a, b) => a.time - b.time);
 }
 
+// Dynamic Institutional ATM Option Pricing Engine (Theta-Decay & DTE Aware for NSE/BSE)
+export function getDynamicTimeValue(spotPrice, dateObj, instrumentKey = 'NIFTY') {
+  const day = dateObj.getDay(); // 0: Sun, 1: Mon, 2: Tue, 3: Wed, 4: Thu, 5: Fri, 6: Sat
+  const totalMins = dateObj.getHours() * 60 + dateObj.getMinutes();
+  const dayProgression = Math.max(0, Math.min(1, (totalMins - 555) / 375)); // 0.0 at 09:15 to 1.0 at 15:30
+
+  if (instrumentKey === 'NIFTY') {
+    let baseFactor;
+    switch (day) {
+      case 5: // Friday (New Weekly Expiry cycle, 6 DTE)
+        baseFactor = 0.0058 - dayProgression * 0.0006;
+        break;
+      case 1: // Monday (3 DTE)
+        baseFactor = 0.0049 - dayProgression * 0.0006;
+        break;
+      case 2: // Tuesday (2 DTE)
+        baseFactor = 0.0040 - dayProgression * 0.0007;
+        break;
+      case 3: // Wednesday (1 DTE)
+        baseFactor = 0.0031 - dayProgression * 0.0008;
+        break;
+      case 4: // Thursday (NSE Weekly/Monthly EXPIRY DAY, 0 DTE)
+        baseFactor = 0.0016 - dayProgression * 0.0012; // ~40 at open down to ~10 at close
+        break;
+      default:
+        baseFactor = 0.0048;
+    }
+    return Math.max(4, Number((spotPrice * baseFactor).toFixed(1)));
+  } else {
+    // BSE SENSEX Weekly Expiry is every FRIDAY (Day 5)
+    let baseFactor;
+    switch (day) {
+      case 1: // Monday (4 DTE)
+        baseFactor = 0.0046 - dayProgression * 0.0006;
+        break;
+      case 2: // Tuesday (3 DTE)
+        baseFactor = 0.0038 - dayProgression * 0.0006;
+        break;
+      case 3: // Wednesday (2 DTE)
+        baseFactor = 0.0029 - dayProgression * 0.0006;
+        break;
+      case 4: // Thursday (1 DTE)
+        baseFactor = 0.0021 - dayProgression * 0.0006;
+        break;
+      case 5: // Friday (BSE Weekly EXPIRY DAY, 0 DTE)
+        baseFactor = 0.0014 - dayProgression * 0.0010;
+        break;
+      default:
+        baseFactor = 0.0038;
+    }
+    return Math.max(10, Number((spotPrice * baseFactor).toFixed(1)));
+  }
+}
+
+export function calculateDynamicOptionPremium(spotPrice, strikePrice, optionType, timestampSec, instrumentKey = 'NIFTY') {
+  const dateObj = new Date(timestampSec * 1000);
+  const istDate = new Date(dateObj.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const timeValue = getDynamicTimeValue(spotPrice, istDate, instrumentKey);
+
+  const isCall = optionType === 'BUY_CE' || optionType === 'CE';
+  const intrinsic = isCall ? Math.max(0, spotPrice - strikePrice) : Math.max(0, strikePrice - spotPrice);
+
+  return Number(Math.max(5, intrinsic + timeValue).toFixed(1));
+}
+
 // Single Unified Session Trade Evaluator (V3 Pro Institutional Engine)
 // Incorporates:
 // 1. Day Open Alignment Rule (Prevents counter-trend fake setups)
@@ -199,12 +264,8 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
         const spotEntry = isFreshLiveTrigger
           ? Number(c.close.toFixed(2))
           : Number((c.open - (c.open - c.close) * 0.45).toFixed(2));
-        const spotDiscount = Math.abs(c.close - spotEntry);
-        const optDiscount = Number((spotDiscount * config.delta).toFixed(1));
-        const entryPrice = isFreshLiveTrigger
-          ? config.defaultPeEntry
-          : Math.max(50, Number((config.defaultPeEntry - optDiscount).toFixed(1)));
         const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
+        const entryPrice = calculateDynamicOptionPremium(spotEntry, atmStrike, 'BUY_PE', c.time, instrumentKey);
         const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
         const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
         const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
@@ -247,12 +308,8 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
         const spotEntry = isFreshLiveTrigger
           ? Number(c.close.toFixed(2))
           : Number((c.open + (c.close - c.open) * 0.45).toFixed(2));
-        const spotDiscount = Math.abs(c.close - spotEntry);
-        const optDiscount = Number((spotDiscount * config.delta).toFixed(1));
-        const entryPrice = isFreshLiveTrigger
-          ? config.defaultCeEntry
-          : Math.max(50, Number((config.defaultCeEntry - optDiscount).toFixed(1)));
         const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
+        const entryPrice = calculateDynamicOptionPremium(spotEntry, atmStrike, 'BUY_CE', c.time, instrumentKey);
         const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
         const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
         const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
