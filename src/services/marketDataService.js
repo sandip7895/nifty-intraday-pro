@@ -15,8 +15,8 @@ export const INSTRUMENTS = {
     symbol: '%5ENSEI',
     lotSize: 65,         // Official 2026 NSE Lot Size
     strikeStep: 50,      // 50-point strike spacing
-    defaultCeEntry: 135.00,
-    defaultPeEntry: 130.00,
+    defaultCeEntry: 195.00,
+    defaultPeEntry: 190.00,
     delta: 0.52,         // Intraday ATM delta
     target1Pct: 0.18,    // +18% Target 1 (High-Accuracy Quick Momentum Target)
     target2Pct: 0.45,    // +45% Target 2
@@ -89,54 +89,58 @@ export function parseYahooCandles(result) {
 }
 
 // Dynamic Institutional ATM Option Pricing Engine (Theta-Decay & DTE Aware for NSE/BSE)
+// Updated to official SEBI / NSE / BSE schedule:
+// 1. NSE NIFTY 50: Weekly & Monthly Expiry is every TUESDAY
+// 2. BSE SENSEX: Weekly & Monthly Expiry is every THURSDAY
 export function getDynamicTimeValue(spotPrice, dateObj, instrumentKey = 'NIFTY') {
   const day = dateObj.getDay(); // 0: Sun, 1: Mon, 2: Tue, 3: Wed, 4: Thu, 5: Fri, 6: Sat
   const totalMins = dateObj.getHours() * 60 + dateObj.getMinutes();
   const dayProgression = Math.max(0, Math.min(1, (totalMins - 555) / 375)); // 0.0 at 09:15 to 1.0 at 15:30
 
   if (instrumentKey === 'NIFTY') {
+    // NSE NIFTY 50 Weekly Expiry is every TUESDAY (Day 2)
     let baseFactor;
     switch (day) {
-      case 5: // Friday (New Weekly Expiry cycle, 6 DTE)
-        baseFactor = 0.0058 - dayProgression * 0.0006;
+      case 2: // Tuesday (NSE Weekly EXPIRY DAY, 0 DTE)
+        baseFactor = 0.0018 - dayProgression * 0.0015; // ~₹45 at open down to ~₹8 at close
         break;
-      case 1: // Monday (3 DTE)
-        baseFactor = 0.0049 - dayProgression * 0.0006;
+      case 3: // Wednesday (New Weekly Cycle starts, 6 DTE)
+        baseFactor = 0.0084 - dayProgression * 0.0006; // ~₹215 down to ~₹200
         break;
-      case 2: // Tuesday (2 DTE)
-        baseFactor = 0.0040 - dayProgression * 0.0007;
+      case 4: // Thursday (5 DTE)
+        baseFactor = 0.0076 - dayProgression * 0.0008; // ~₹196 at open down to ~₹175 at close (e.g. ₹190 at 10:15)
         break;
-      case 3: // Wednesday (1 DTE)
-        baseFactor = 0.0031 - dayProgression * 0.0008;
+      case 5: // Friday (4 DTE)
+        baseFactor = 0.0067 - dayProgression * 0.0007; // ~₹172 down to ~₹155
         break;
-      case 4: // Thursday (NSE Weekly/Monthly EXPIRY DAY, 0 DTE)
-        baseFactor = 0.0016 - dayProgression * 0.0012; // ~40 at open down to ~10 at close
+      case 1: // Monday (1 DTE)
+        baseFactor = 0.0044 - dayProgression * 0.0010; // ~₹113 down to ~₹88
         break;
       default:
-        baseFactor = 0.0048;
+        baseFactor = 0.0074;
     }
     return Math.max(4, Number((spotPrice * baseFactor).toFixed(1)));
   } else {
-    // BSE SENSEX Weekly Expiry is every FRIDAY (Day 5)
+    // BSE SENSEX Weekly Expiry is every THURSDAY (Day 4)
     let baseFactor;
     switch (day) {
-      case 1: // Monday (4 DTE)
-        baseFactor = 0.0046 - dayProgression * 0.0006;
+      case 4: // Thursday (BSE Weekly EXPIRY DAY, 0 DTE)
+        baseFactor = 0.0016 - dayProgression * 0.0013; // ~₹132 at open down to ~₹25 at close
         break;
-      case 2: // Tuesday (3 DTE)
-        baseFactor = 0.0038 - dayProgression * 0.0006;
+      case 5: // Friday (New Weekly Cycle starts, 6 DTE)
+        baseFactor = 0.0070 - dayProgression * 0.0006; // ~₹575 down to ~₹528
         break;
-      case 3: // Wednesday (2 DTE)
-        baseFactor = 0.0029 - dayProgression * 0.0006;
+      case 1: // Monday (3 DTE)
+        baseFactor = 0.0055 - dayProgression * 0.0007; // ~₹450 down to ~₹396
         break;
-      case 4: // Thursday (1 DTE)
-        baseFactor = 0.0021 - dayProgression * 0.0006;
+      case 2: // Tuesday (2 DTE)
+        baseFactor = 0.0044 - dayProgression * 0.0007; // ~₹363 down to ~₹305
         break;
-      case 5: // Friday (BSE Weekly EXPIRY DAY, 0 DTE)
-        baseFactor = 0.0014 - dayProgression * 0.0010;
+      case 3: // Wednesday (1 DTE)
+        baseFactor = 0.0032 - dayProgression * 0.0008; // ~₹264 down to ~₹198
         break;
       default:
-        baseFactor = 0.0038;
+        baseFactor = 0.0050;
     }
     return Math.max(10, Number((spotPrice * baseFactor).toFixed(1)));
   }

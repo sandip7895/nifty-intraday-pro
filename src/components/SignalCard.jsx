@@ -31,7 +31,7 @@ export default function SignalCard({
   const isCe = isBuyCe || !isBuyPe;
 
   // Option Calculations (Target 1: +18%, Target 2: +45%, SL: -14%)
-  const entryPrice = activeSignal.optionEntry || (isSensex ? 340 : 135);
+  const entryPrice = activeSignal.optionEntry || (isSensex ? 340 : 195);
   const target1Price = activeSignal.optionTarget1 || (entryPrice * 1.18);
   const target2Price = activeSignal.optionTarget2 || (entryPrice * 1.45);
   const slPrice = activeSignal.optionSl || (entryPrice * 0.86);

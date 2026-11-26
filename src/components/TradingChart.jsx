@@ -144,7 +144,7 @@ export default function TradingChart({
   const dynamicStrikeName = activeSignal?.strikeName || (isSensex ? 'SENSEX 82000 CE' : 'NIFTY 25250 CE');
   const delta = isSensex ? 0.50 : 0.52;
   const spotEntry = activeSignal?.spotTrigger || (candles && candles[3]?.close) || currentPrice;
-  const baseEntryPrice = activeSignal?.optionEntry || (isSensex ? 323.2 : 125.8);
+  const baseEntryPrice = activeSignal?.optionEntry || (isSensex ? 323.2 : 195.0);
   const target1Price = activeSignal?.optionTarget1 || Number((baseEntryPrice * 1.18).toFixed(1));
   const target2Price = activeSignal?.optionTarget2 || Number((baseEntryPrice * 1.45).toFixed(1));
   const slPrice = activeSignal?.optionSl || Number((baseEntryPrice * 0.86).toFixed(1));
@@ -268,8 +268,8 @@ export default function TradingChart({
             const effectiveDelta = Math.max(0.35, delta + (spotDiff / 600) * 0.15);
             return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
           } else {
-            // Gamma acceleration as option goes deep ITM, mirroring real market pricing
-            const effectiveDelta = Math.min(0.85, delta + (spotDiff / 500) * 0.32);
+            // Gamma acceleration & IV expansion as option moves in-the-money, mirroring real broker option pricing
+            const effectiveDelta = Math.min(1.15, delta + (spotDiff / 250) * 0.55);
             return Math.max(1, baseEntryPrice + spotDiff * effectiveDelta);
           }
         };
