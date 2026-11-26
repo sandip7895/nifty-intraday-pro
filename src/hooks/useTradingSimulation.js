@@ -17,14 +17,15 @@ import {
 } from '../services/audioService';
 
 // Helper to safely read/write locked live signal per (instrument, date) so live signals NEVER flicker/disappear
-// Uses v3 key to ensure stale static/wrong-expiry pricing from earlier sessions is cleanly purged
+// Uses v4 key to ensure stale static/wrong-expiry pricing and premature SL states from earlier sessions are cleanly purged
 function getLockedLiveSignal(instrumentKey, dateKey) {
   if (typeof window === 'undefined' || !dateKey) return null;
   try {
-    // Purge legacy v1/v2 keys if present
+    // Purge legacy v1/v2/v3 keys if present
     localStorage.removeItem(`nifty_pro_locked_sig_${instrumentKey}_${dateKey}`);
     localStorage.removeItem(`nifty_pro_locked_sig_v2_${instrumentKey}_${dateKey}`);
-    const raw = localStorage.getItem(`nifty_pro_locked_sig_v3_${instrumentKey}_${dateKey}`);
+    localStorage.removeItem(`nifty_pro_locked_sig_v3_${instrumentKey}_${dateKey}`);
+    const raw = localStorage.getItem(`nifty_pro_locked_sig_v4_${instrumentKey}_${dateKey}`);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -34,7 +35,7 @@ function getLockedLiveSignal(instrumentKey, dateKey) {
 function saveLockedLiveSignal(instrumentKey, dateKey, trade) {
   if (typeof window === 'undefined' || !dateKey || !trade) return;
   try {
-    localStorage.setItem(`nifty_pro_locked_sig_v3_${instrumentKey}_${dateKey}`, JSON.stringify(trade));
+    localStorage.setItem(`nifty_pro_locked_sig_v4_${instrumentKey}_${dateKey}`, JSON.stringify(trade));
   } catch {
     // ignore storage errors
   }

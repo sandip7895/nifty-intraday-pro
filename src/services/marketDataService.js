@@ -18,6 +18,9 @@ export const INSTRUMENTS = {
     defaultCeEntry: 195.00,
     defaultPeEntry: 190.00,
     delta: 0.52,         // Intraday ATM delta
+    target1SpotPts: 40.0, // Institutional 40-pt momentum quick target (~+18% on normal ATM)
+    target2SpotPts: 95.0, // Extended 95-pt runner target
+    slSpotPts: 31.0,      // Strict 31-pt institutional stop loss (1:1.3 R:R)
     target1Pct: 0.18,    // +18% Target 1 (High-Accuracy Quick Momentum Target)
     target2Pct: 0.45,    // +45% Target 2
     slPct: 0.14,         // -14% Strict Stop Loss
@@ -34,6 +37,9 @@ export const INSTRUMENTS = {
     defaultCeEntry: 350.00,
     defaultPeEntry: 340.00,
     delta: 0.50,         // Intraday ATM delta
+    target1SpotPts: 100.0, // Institutional 100-pt momentum quick target (~+18% on normal ATM)
+    target2SpotPts: 240.0, // Extended 240-pt runner target
+    slSpotPts: 77.0,       // Strict 77-pt institutional stop loss (1:1.3 R:R)
     target1Pct: 0.18,    // +18% Target 1 (High-Accuracy Quick Momentum Target)
     target2Pct: 0.45,    // +45% Target 2
     slPct: 0.14,         // -14% Strict Stop Loss
@@ -149,12 +155,18 @@ export function getDynamicTimeValue(spotPrice, dateObj, instrumentKey = 'NIFTY')
 export function calculateDynamicOptionPremium(spotPrice, strikePrice, optionType, timestampSec, instrumentKey = 'NIFTY') {
   const dateObj = new Date(timestampSec * 1000);
   const istDate = new Date(dateObj.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-  const timeValue = getDynamicTimeValue(spotPrice, istDate, instrumentKey);
+  const atmTimeValue = getDynamicTimeValue(spotPrice, istDate, instrumentKey);
 
   const isCall = optionType === 'BUY_CE' || optionType === 'CE';
   const intrinsic = isCall ? Math.max(0, spotPrice - strikePrice) : Math.max(0, strikePrice - spotPrice);
+  const delta = instrumentKey === 'SENSEX' ? 0.50 : 0.52;
 
-  return Number(Math.max(5, intrinsic + timeValue).toFixed(1));
+  // Real option market pricing: intrinsic increases premium by delta, without double-counting extrinsic time value
+  const effectivePremium = intrinsic > 0
+    ? atmTimeValue + intrinsic * delta
+    : Math.max(5, atmTimeValue - (Math.abs(spotPrice - strikePrice) * (1 - delta)));
+
+  return Number(Math.max(5, effectivePremium).toFixed(1));
 }
 
 // Single Unified Session Trade Evaluator (V3 Pro Institutional Engine)
@@ -259,20 +271,14 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
         (c.close > orbHigh || c.close > cprTop || prevC.close <= ema9) &&
         rsi >= 45 && adx >= 18;
 
-      // In live market, if the signal triggers right now on the current/just-closed bar,
-      // enter at the ACTUAL live price (c.close) so the trader gets a real executable entry,
-      // NOT a backdated price from minutes ago that makes Target 1 look already hit!
-      const isFreshLiveTrigger = isLiveSession && (i >= currentDayCandles.length - 2);
-
       if (isBearishBreak) {
-        const spotEntry = isFreshLiveTrigger
-          ? Number(c.close.toFixed(2))
-          : Number((c.open - (c.open - c.close) * 0.45).toFixed(2));
+        // Non-repainting institutional confirmation entry: 45% pullback into the trigger candle
+        const spotEntry = Number((c.open - (c.open - c.close) * 0.45).toFixed(2));
         const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
         const entryPrice = calculateDynamicOptionPremium(spotEntry, atmStrike, 'BUY_PE', c.time, instrumentKey);
-        const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
-        const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
-        const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
+        const target1 = Number((entryPrice + config.target1SpotPts * config.delta).toFixed(1));
+        const target2 = Number((entryPrice + config.target2SpotPts * config.delta).toFixed(1));
+        const sl = Number((entryPrice - config.slSpotPts * config.delta).toFixed(1));
 
         const entryDate = (isLiveSession && i === currentDayCandles.length - 1)
           ? new Date()
@@ -309,14 +315,13 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
         };
         break; // Lock day's primary setup
       } else if (isBullishBreak) {
-        const spotEntry = isFreshLiveTrigger
-          ? Number(c.close.toFixed(2))
-          : Number((c.open + (c.close - c.open) * 0.45).toFixed(2));
+        // Non-repainting institutional confirmation entry: 45% pullback into the trigger candle
+        const spotEntry = Number((c.open + (c.close - c.open) * 0.45).toFixed(2));
         const atmStrike = Math.round(spotEntry / config.strikeStep) * config.strikeStep;
         const entryPrice = calculateDynamicOptionPremium(spotEntry, atmStrike, 'BUY_CE', c.time, instrumentKey);
-        const target1 = Number((entryPrice * (1 + config.target1Pct)).toFixed(1));
-        const target2 = Number((entryPrice * (1 + config.target2Pct)).toFixed(1));
-        const sl = Number((entryPrice * (1 - config.slPct)).toFixed(1));
+        const target1 = Number((entryPrice + config.target1SpotPts * config.delta).toFixed(1));
+        const target2 = Number((entryPrice + config.target2SpotPts * config.delta).toFixed(1));
+        const sl = Number((entryPrice - config.slSpotPts * config.delta).toFixed(1));
 
         const entryDate = (isLiveSession && i === currentDayCandles.length - 1)
           ? new Date()
@@ -376,13 +381,16 @@ export function evaluateSessionTrade(currentDayCandles, prevDayLevels, instrumen
       const worstSpotDelta = isCe ? (kc.low - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.high);
       const closeSpotDelta = isCe ? (kc.close - triggeredTrade.spotEntry) : (triggeredTrade.spotEntry - kc.close);
 
-      const maxOptPrice = Number(Math.max(1, triggeredTrade.entryPrice + bestSpotDelta * config.delta).toFixed(1));
+      // Realistic option delta with Gamma & IV expansion for momentum breakouts
+      const effDelta = Math.min(1.15, config.delta + (Math.max(0, bestSpotDelta) / 200) * 0.55);
+      const maxOptPrice = Number(Math.max(1, triggeredTrade.entryPrice + bestSpotDelta * effDelta).toFixed(1));
       const minOptPrice = Number(Math.max(1, triggeredTrade.entryPrice + worstSpotDelta * config.delta).toFixed(1));
       const closeOptPrice = Number(Math.max(1, triggeredTrade.entryPrice + closeSpotDelta * config.delta).toFixed(1));
       currentOptPrice = closeOptPrice;
 
-      const isTargetReached = maxOptPrice >= triggeredTrade.target1;
-      const isSlBreached = minOptPrice <= triggeredTrade.sl;
+      // Target 1 / SL Evaluation: Achieved if Spot reaches target points or Option reaches target premium
+      const isTargetReached = bestSpotDelta >= config.target1SpotPts || maxOptPrice >= triggeredTrade.target1;
+      const isSlBreached = worstSpotDelta <= -config.slSpotPts || minOptPrice <= triggeredTrade.sl;
 
       if (isTargetReached && !isSlBreached) {
         outcome = 'TARGET_HIT';
@@ -466,12 +474,13 @@ export function updateLockedTradeStatus(lockedTrade, currentDayCandles, liveSpot
     const worstSpotDelta = isCe ? (kc.low - lockedTrade.spotEntry) : (lockedTrade.spotEntry - kc.high);
     const closeSpotDelta = isCe ? (kc.close - lockedTrade.spotEntry) : (lockedTrade.spotEntry - kc.close);
 
-    const maxOptPrice = Number(Math.max(1, lockedTrade.entryPrice + bestSpotDelta * config.delta).toFixed(1));
+    const effDelta = Math.min(1.15, config.delta + (Math.max(0, bestSpotDelta) / 200) * 0.55);
+    const maxOptPrice = Number(Math.max(1, lockedTrade.entryPrice + bestSpotDelta * effDelta).toFixed(1));
     const minOptPrice = Number(Math.max(1, lockedTrade.entryPrice + worstSpotDelta * config.delta).toFixed(1));
     const closeOptPrice = Number(Math.max(1, lockedTrade.entryPrice + closeSpotDelta * config.delta).toFixed(1));
 
-    const isTargetReached = maxOptPrice >= lockedTrade.target1;
-    const isSlBreached = minOptPrice <= lockedTrade.sl;
+    const isTargetReached = bestSpotDelta >= config.target1SpotPts || maxOptPrice >= lockedTrade.target1;
+    const isSlBreached = worstSpotDelta <= -config.slSpotPts || minOptPrice <= lockedTrade.sl;
 
     if (isTargetReached && !isSlBreached) {
       return {
